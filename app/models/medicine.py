@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
 class Medicine(Base):
@@ -11,3 +12,5 @@ class Medicine(Base):
     category = Column(String, nullable=True)   # tablet, syrup, injection
     unit = Column(String, nullable=True)       # strip, bottle, piece
     strength = Column(String, nullable=True)   # 500mg, 100mg etc.
+    
+    batches = relationship("Batch", back_populates="medicine", cascade="all, delete")
