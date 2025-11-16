@@ -32,4 +32,4 @@ class MedicineResponse(BaseModel):
     strength: str | None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
