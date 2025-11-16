@@ -1,6 +1,4 @@
-from sqlalchemy.orm import declarative_base
+from app.db.base_class import Base
 
-Base = declarative_base()
-
-# Import models here so Alembic can detect them
+# Import ALL models here
 from app.models.user import User
