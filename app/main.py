@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.db import get_db
 
-from app.api import auth
-
+from app.api import auth, user
 
 app = FastAPI()
 settings = get_settings()
