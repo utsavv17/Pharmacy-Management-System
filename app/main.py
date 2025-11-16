@@ -4,9 +4,12 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.db import get_db
 
+from app.api import auth, user
 
 app = FastAPI()
 settings = get_settings()
+
+app.include_router(auth.router)
 
 @app.get("/")
 def health_check(db: Session = Depends(get_db)):
