@@ -6,6 +6,9 @@ from app.schemas.purchase import PurchaseCreate, PurchaseResponse
 from app.services.purchase_service import PurchaseService
 from app.core.deps import get_current_user
 from app.main import get_db
+from app.utils.pagination import Paginator
+from app.models.purchase import Purchase
+
 
 router = APIRouter(prefix="/purchases", tags=["Purchases"])
 
@@ -47,25 +50,42 @@ def create_purchase(
 # List purchases
 @router.get("/")
 def list_purchases(
+    search: str | None = None,    # invoice or supplier
+    page: int = 1,
+    limit: int = 10,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    purchases = db.query(Purchase).order_by(Purchase.id.desc()).all()
+
+    query = db.query(Purchase)
+
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (Purchase.invoice_number.ilike(s)) |
+            (Purchase.supplier_name.ilike(s))
+        )
+
+    paginated = Paginator.paginate(query, page, limit)
 
     return {
         "success": True,
-        "message": "Purchases fetched successfully",
-        "data": [
-            {
-                "id": p.id,
-                "invoice_number": p.invoice_number,
-                "supplier_name": p.supplier_name,
-                "purchase_date": p.purchase_date,
-                "total_amount": p.total_amount
-            }
-            for p in purchases
-        ]
+        "message": "Purchases fetched",
+        "data": {
+            "items": [
+                {
+                    "id": p.id,
+                    "invoice_number": p.invoice_number,
+                    "supplier_name": p.supplier_name,
+                    "purchase_date": p.purchase_date,
+                    "total_amount": p.total_amount
+                }
+                for p in paginated["items"]
+            ],
+            "pagination": paginated["pagination"]
+        }
     }
+
 
 # Get purchase by ID
 @router.get("/{purchase_id}")
