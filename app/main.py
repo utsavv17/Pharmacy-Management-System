@@ -25,7 +25,7 @@ app.include_router(dashboard.router)
 app.include_router(supplier.router)
 app.include_router(settings.router)
 
-@app.get("/")
+@app.get("/", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):
     return {
         "status": "ok",
