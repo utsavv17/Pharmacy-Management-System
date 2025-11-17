@@ -5,6 +5,10 @@ from app.schemas.batch import BatchCreateSchema, BatchUpdateSchema
 from app.services.batch_service import BatchService
 from app.core.deps import get_current_user
 from app.main import get_db
+from app.utils.pagination import Paginator
+from app.models.batch import Batch
+from app.models.medicine import Medicine
+
 
 router = APIRouter(prefix="/batches", tags=["Batches"])
 
@@ -29,6 +33,47 @@ def create_batch(
             "selling_price": batch.selling_price,
             "quantity": batch.quantity,
             "medicine_id": batch.medicine_id
+        }
+    }
+
+# List all batches
+@router.get("/")
+def list_batches(
+    search: str | None = None,       # batch_no or medicine name
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+
+    query = db.query(Batch).join(Medicine)
+
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (Batch.batch_no.ilike(s)) |
+            (Medicine.name.ilike(s))
+        )
+
+    paginated = Paginator.paginate(query, page, limit)
+
+    return {
+        "success": True,
+        "message": "Batches fetched",
+        "data": {
+            "items": [
+                {
+                    "id": b.id,
+                    "batch_no": b.batch_no,
+                    "expiry_date": b.expiry_date,
+                    "purchase_price": b.purchase_price,
+                    "selling_price": b.selling_price,
+                    "quantity": b.quantity,
+                    "medicine_id": b.medicine_id
+                }
+                for b in paginated["items"]
+            ],
+            "pagination": paginated["pagination"]
         }
     }
 
