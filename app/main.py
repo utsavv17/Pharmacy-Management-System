@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.db import get_db
 
-from app.api import auth, user, medicine, batch, inventory, purchase
+from app.api import auth, user, medicine, batch, inventory, purchase, sales
 
 app = FastAPI()
 settings = get_settings()
@@ -15,6 +15,7 @@ app.include_router(medicine.router)
 app.include_router(batch.router)
 app.include_router(inventory.router)
 app.include_router(purchase.router)
+app.include_router(sales.router)
 
 
 @app.get("/")
