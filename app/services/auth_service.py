@@ -11,10 +11,10 @@ class AuthService:
         user = db.query(User).filter(User.email == email).first()
 
         if not user:
-            return None, "USER_NOT_FOUND"
+            return None, None, "USER_NOT_FOUND"
 
         if not verify_password(password, user.hashed_password):
-            return None, "PASSWORD_INCORRECT"
+            return None, None, "PASSWORD_INCORRECT"
 
         token = create_access_token({"sub": user.email})
 

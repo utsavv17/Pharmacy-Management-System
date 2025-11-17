@@ -9,3 +9,8 @@ class TokenResponse(BaseModel):
     success: bool
     message: str
     data: dict
+
+class LoginErrorResponse(BaseModel):
+    success: bool
+    message: str
+    error: str
