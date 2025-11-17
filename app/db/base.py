@@ -4,4 +4,5 @@ from app.db.base_class import Base
 from app.models.user import User
 from app.models.medicine import Medicine
 from app.models.batch import Batch
-
+from app.models.purchase import Purchase
+from app.models.purchase_item import PurchaseItem
