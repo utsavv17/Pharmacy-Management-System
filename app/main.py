@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.db import get_db
 
-from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report
+from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard
 
 app = FastAPI()
 settings = get_settings()
@@ -18,6 +18,7 @@ app.include_router(purchase.router)
 app.include_router(sales.router)
 app.include_router(invoice.router)
 app.include_router(sales_report.router)
+app.include_router(dashboard.router)
 
 @app.get("/")
 def health_check(db: Session = Depends(get_db)):
