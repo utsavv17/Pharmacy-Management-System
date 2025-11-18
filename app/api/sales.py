@@ -60,43 +60,7 @@ def create_sale(
     }
 
 
-@router.get("/")
-def list_sales(
-    search: str | None = None,     # invoice_no or customer_name
-    page: int = 1,
-    limit: int = 10,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
 
-    query = db.query(Sale)
-
-    if search:
-        s = f"%{search}%"
-        query = query.filter(
-            (Sale.invoice_number.ilike(s)) |
-            (Sale.customer_name.ilike(s))
-        )
-
-    paginated = Paginator.paginate(query, page, limit)
-
-    return {
-        "success": True,
-        "message": "Sales fetched",
-        "data": {
-            "items": [
-                {
-                    "id": s.id,
-                    "invoice_number": s.invoice_number,
-                    "customer_name": s.customer_name,
-                    "sale_date": s.sale_date,
-                    "total_amount": s.total_amount
-                }
-                for s in paginated["items"]
-            ],
-            "pagination": paginated["pagination"]
-        }
-    }
 
 
 

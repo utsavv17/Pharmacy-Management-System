@@ -48,7 +48,7 @@ class DashboardService:
 
         return {
             "date": str(today),
-            "today_sales": float(total_sales),
+            "today_sales": int(total_invoices),
             "today_purchases": float(total_purchases),
             "today_invoices": int(total_invoices),
             "today_items_sold": int(total_items_sold),
@@ -64,8 +64,8 @@ class DashboardService:
         # Total suppliers
         total_suppliers = db.query(func.count(Supplier.id)).scalar() or 0
         
-        # Total sales (all time)
-        total_sales = db.query(func.count(Sale.id)).scalar() or 0
+        # Total sales count (all time)
+        total_sales_count = db.query(func.count(Sale.id)).scalar() or 0
         
         # Total items sold (all time)
         total_items_sold = db.query(func.sum(SaleItem.quantity)).scalar() or 0
@@ -76,7 +76,7 @@ class DashboardService:
         return {
             "total_medicines": total_medicines,
             "total_suppliers": total_suppliers,
-            "total_sales": total_sales,
+            "total_sales": total_sales_count,
             "total_items_sold": int(total_items_sold),
             "total_revenue": float(total_revenue)
         }

@@ -6,6 +6,9 @@ from app.core.deps import get_current_user
 from app.main import get_db
 from app.services.sales_report_service import SalesReportService
 from app.services.dashboard_service import DashboardService
+from app.models.sale import Sale
+from app.models.sale_item import SaleItem
+from app.utils.pagination import Paginator
 
 router = APIRouter(prefix="/reports/sales", tags=["Sales Reports"])
 
@@ -76,3 +79,60 @@ def get_last_7_days_sales(
         "message": "Last 7 days sales fetched",
         "data": data
     }
+
+# List all sales
+@router.get("/")
+def list_sales(
+    year: int = date.today().year,
+    search: str | None = None,
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    from sqlalchemy import extract, func
+    from app.models.sale_item import SaleItem
+    from app.models.batch import Batch
+    
+    query = db.query(Sale).filter(extract('year', Sale.sale_date) == year)
+
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (Sale.invoice_number.ilike(s)) |
+            (Sale.customer_name.ilike(s))
+        )
+
+    paginated = Paginator.paginate(query, page, limit)
+    
+    # Year totals
+    year_sales_count = db.query(func.count(Sale.id)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+    year_sale_amount = db.query(func.sum(Sale.total_amount)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+    year_revenue = db.query(func.sum((SaleItem.selling_price - Batch.purchase_price) * SaleItem.quantity)).join(Sale).join(Batch, SaleItem.batch_id == Batch.id).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+    year_items_sold = db.query(func.sum(SaleItem.quantity)).join(Sale).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+
+    return {
+        "success": True,
+        "message": "Sales fetched",
+        "data": {
+            "items": [
+                {
+                    "id": s.id,
+                    "invoice_number": s.invoice_number,
+                    "customer_name": s.customer_name,
+                    "sale_date": s.sale_date,
+                    "total_amount": s.total_amount
+                }
+                for s in paginated["items"]
+            ],
+            "pagination": paginated["pagination"],
+            "year_summary": {
+                "year": year,
+                "total_sales": year_sales_count,
+                "total_sale_amount": float(year_sale_amount),
+                "total_revenue": float(year_revenue),
+                "total_items_sold": int(year_items_sold)
+            }
+        }
+    }
+
