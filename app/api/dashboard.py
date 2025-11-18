@@ -13,41 +13,22 @@ from app.models.sale_item import SaleItem
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
+# Get grand total statistics (all time)
 @router.get("/")
-def get_dashboard_stats(
+def get_dashboard_grand_totals(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    # Total medicines
-    total_medicines = db.query(Medicine).count()
-    
-    # Total suppliers
-    total_suppliers = db.query(Supplier).count()
-    
-    # Total sales (number of sales)
-    total_sales = db.query(Sale).count()
-    
-    # Total sold (sum of all quantities sold)
-    total_sold = db.query(func.sum(SaleItem.quantity)).scalar() or 0
-    
-    # Total revenue (sum of all sale amounts)
-    total_revenue = db.query(func.sum(Sale.total_amount)).scalar() or 0.0
-
+    data = DashboardService.grand_total_summary(db)
     return {
         "success": True,
-        "message": "Dashboard statistics fetched successfully",
-        "data": {
-            "total_medicines": total_medicines,
-            "total_suppliers": total_suppliers,
-            "total_sales": total_sales,
-            "total_sold": total_sold,
-            "total_revenue": total_revenue
-        }
+        "message": "Grand total statistics fetched successfully",
+        "data": data
     }
 
 # Get today's summary
 @router.get("/today")
-def dashboard_today(
+def get_dashboard_today(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -71,15 +52,4 @@ def dashboard_inventory(
         "data": data
     }
 
-# Get last 7 days sales summary
-@router.get("/sales-7-days")
-def dashboard_last_7_days_sales(
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
-    data = DashboardService.last_7_days_sales(db)
-    return {
-        "success": True,
-        "message": "Last 7 days sales fetched",
-        "data": data
-    }
+

@@ -7,6 +7,7 @@ from app.models.sale_item import SaleItem
 from app.models.purchase import Purchase
 from app.models.batch import Batch
 from app.models.medicine import Medicine
+from app.models.supplier import Supplier
 
 
 class DashboardService:
@@ -47,10 +48,37 @@ class DashboardService:
 
         return {
             "date": str(today),
-            "total_sales": float(total_sales),
-            "total_purchases": float(total_purchases),
-            "total_invoices": int(total_invoices),
-            "total_items_sold": int(total_items_sold)
+            "today_sales": float(total_sales),
+            "today_purchases": float(total_purchases),
+            "today_invoices": int(total_invoices),
+            "today_items_sold": int(total_items_sold),
+            "today_revenue": float(total_sales)
+        }
+
+    # Grand Total Summary (All Time)
+    @staticmethod
+    def grand_total_summary(db: Session):
+        # Total medicines
+        total_medicines = db.query(func.count(Medicine.id)).scalar() or 0
+        
+        # Total suppliers
+        total_suppliers = db.query(func.count(Supplier.id)).scalar() or 0
+        
+        # Total sales (all time)
+        total_sales = db.query(func.count(Sale.id)).scalar() or 0
+        
+        # Total items sold (all time)
+        total_items_sold = db.query(func.sum(SaleItem.quantity)).scalar() or 0
+        
+        # Total revenue (all time)
+        total_revenue = db.query(func.sum(Sale.total_amount)).scalar() or 0.0
+
+        return {
+            "total_medicines": total_medicines,
+            "total_suppliers": total_suppliers,
+            "total_sales": total_sales,
+            "total_items_sold": int(total_items_sold),
+            "total_revenue": float(total_revenue)
         }
 
     # 2. Inventory Summary

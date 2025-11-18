@@ -5,6 +5,7 @@ from datetime import date
 from app.core.deps import get_current_user
 from app.main import get_db
 from app.services.sales_report_service import SalesReportService
+from app.services.dashboard_service import DashboardService
 
 router = APIRouter(prefix="/reports/sales", tags=["Sales Reports"])
 
@@ -60,5 +61,18 @@ def get_sales_by_medicine(
     return {
         "success": True,
         "message": "Sales report generated for medicine",
+        "data": data
+    }
+
+# Get last 7 days sales summary
+@router.get("/sales-7-days")
+def get_last_7_days_sales(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    data = DashboardService.last_7_days_sales(db)
+    return {
+        "success": True,
+        "message": "Last 7 days sales fetched",
         "data": data
     }

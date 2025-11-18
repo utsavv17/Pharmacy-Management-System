@@ -16,7 +16,7 @@ class SaleService:
         sale = Sale(
             invoice_number=invoice_number,
             customer_name=data.customer_name or "Walk-in Customer",
-            sale_date=date.today(),
+            sale_date=data.sale_date or date.today(),
             total_amount=0
         )
         db.add(sale)
