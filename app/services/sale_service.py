@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from datetime import date
+from datetime import datetime, date
 
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
@@ -11,10 +11,12 @@ class SaleService:
     @staticmethod
     def create_sale(db: Session, data):
         # 1) Create the parent sale
+        # create a unique invoice number
+        invoice_number = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         sale = Sale(
-            invoice_number=data.invoice_number,
-            customer_name=data.customer_name,
-            sale_date=data.sale_date,
+            invoice_number=invoice_number,
+            customer_name=data.customer_name or "Walk-in Customer",
+            sale_date=date.today(),
             total_amount=0
         )
         db.add(sale)

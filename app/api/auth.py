@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.schemas.auth import LoginSchema, TokenResponse, LoginErrorResponse
@@ -23,7 +23,7 @@ def get_me(user: User = Depends(get_current_user)):
     }
 
 
-@router.post("/login", response_model=TokenResponse | LoginErrorResponse)
+@router.post("/login")
 def login(payload: LoginSchema, db: Session = Depends(get_db)):
     token, user, error = AuthService.login(
         db,
@@ -32,18 +32,24 @@ def login(payload: LoginSchema, db: Session = Depends(get_db)):
     )
 
     if error == "USER_NOT_FOUND":
-        return {
-            "success": False,
-            "message": "User not found",
-            "error": "USER_NOT_FOUND"
-        }
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "success": False,
+                "message": "User not found",
+                "error": "USER_NOT_FOUND"
+            }
+        )
 
     if error == "PASSWORD_INCORRECT":
-        return {
-            "success": False,
-            "message": "Invalid password",
-            "error": "PASSWORD_INCORRECT"
-        }
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "success": False,
+                "message": "Invalid password",
+                "error": "PASSWORD_INCORRECT"
+            }
+        )
 
     return {
         "success": True,

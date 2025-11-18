@@ -7,6 +7,8 @@ from app.core.deps import get_current_user
 from app.main import get_db
 from app.utils.pagination import Paginator
 from app.models.medicine import Medicine
+from app.models.batch import Batch
+from sqlalchemy import func
 
 
 router = APIRouter(prefix="/medicines", tags=["Medicines"])
@@ -53,7 +55,17 @@ def list_medicines(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    query = db.query(Medicine)
+    # Subquery to get latest batch for each medicine
+    latest_batch = db.query(
+        Batch.medicine_id,
+        func.max(Batch.expiry_date).label('latest_expiry')
+    ).group_by(Batch.medicine_id).subquery()
+    
+    query = db.query(Medicine, Batch.selling_price, Batch.expiry_date).outerjoin(
+        latest_batch, Medicine.id == latest_batch.c.medicine_id
+    ).outerjoin(
+        Batch, (Batch.medicine_id == Medicine.id) & (Batch.expiry_date == latest_batch.c.latest_expiry)
+    )
 
     if search:
         query = query.filter(Medicine.name.ilike(f"%{search}%"))
@@ -66,15 +78,17 @@ def list_medicines(
         "data": {
             "items": [
                 {
-                    "id": m.id,
-                "name": m.name,
-                "generic_name": m.generic_name,
-                "brand": m.brand,
-                "category": m.category,
-                "unit": m.unit,
-                "strength": m.strength
+                    "id": item[0].id,
+                    "name": item[0].name,
+                    "generic_name": item[0].generic_name,
+                    "brand": item[0].brand,
+                    "category": item[0].category,
+                    "unit": item[0].unit,
+                    "strength": item[0].strength,
+                    "price": item[1] if len(item) > 1 and item[1] else None,
+                    "expiry_date": item[2].isoformat() if len(item) > 2 and item[2] else None
                 }
-                for m in paginated["items"]
+                for item in paginated["items"]
             ],
             "pagination": paginated["pagination"]
         }

@@ -9,8 +9,10 @@ class PurchaseService:
     @staticmethod
     def create_purchase(db: Session, data):
         # 1) Create parent purchase
+        # create a unique invoice number
+        invoice_number = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         purchase = Purchase(
-            invoice_number=data.invoice_number,
+            invoice_number=invoice_number,
             supplier_name=data.supplier_name,
             purchase_date=data.purchase_date,
             total_amount=0

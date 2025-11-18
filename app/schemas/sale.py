@@ -8,9 +8,9 @@ class SaleItemCreate(BaseModel):
 
 
 class SaleCreate(BaseModel):
-    invoice_number: str
+    invoice_number: str | None = None
     customer_name: str | None = None
-    sale_date: date
+    sale_date: date | None = None
     items: List[SaleItemCreate]
 
 

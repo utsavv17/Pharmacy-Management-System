@@ -13,7 +13,7 @@ class PurchaseItemCreate(BaseModel):
 
 # Purchase Create Schema
 class PurchaseCreate(BaseModel):
-    invoice_number: str
+    invoice_number: str | None = None
     supplier_name: str | None = None
     purchase_date: date
     items: List[PurchaseItemCreate]
