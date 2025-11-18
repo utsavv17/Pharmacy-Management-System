@@ -1,15 +1,34 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.core.deps import get_current_user
 from app.main import get_db
 from app.services.dashboard_service import DashboardService
+from app.models.medicine import Medicine
+from app.models.supplier import Supplier
+from app.models.sale import Sale
+from app.models.sale_item import SaleItem
+
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
+# Get grand total statistics (all time)
+@router.get("/")
+def get_dashboard_grand_totals(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    data = DashboardService.grand_total_summary(db)
+    return {
+        "success": True,
+        "message": "Grand total statistics fetched successfully",
+        "data": data
+    }
+
 # Get today's summary
 @router.get("/today")
-def dashboard_today(
+def get_dashboard_today(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -33,15 +52,4 @@ def dashboard_inventory(
         "data": data
     }
 
-# Get last 7 days sales summary
-@router.get("/sales-7-days")
-def dashboard_last_7_days_sales(
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
-    data = DashboardService.last_7_days_sales(db)
-    return {
-        "success": True,
-        "message": "Last 7 days sales fetched",
-        "data": data
-    }
+
