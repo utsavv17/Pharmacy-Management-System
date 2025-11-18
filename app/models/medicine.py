@@ -12,5 +12,7 @@ class Medicine(Base):
     category = Column(String, nullable=True)   # tablet, syrup, injection
     unit = Column(String, nullable=True)       # strip, bottle, piece
     strength = Column(String, nullable=True)   # 500mg, 100mg etc.
+    barcode = Column(String, nullable=True)
+    image_url = Column(String, nullable=True)
     
     batches = relationship("Batch", back_populates="medicine", cascade="all, delete")

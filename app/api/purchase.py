@@ -32,6 +32,7 @@ def create_purchase(
             "supplier_name": purchase.supplier_name,
             "purchase_date": purchase.purchase_date,
             "total_amount": purchase.total_amount,
+            "created_at": purchase.created_at,
             "items": [
                 {
                     "id": item.id,
@@ -78,7 +79,8 @@ def list_purchases(
                     "invoice_number": p.invoice_number,
                     "supplier_name": p.supplier_name,
                     "purchase_date": p.purchase_date,
-                    "total_amount": p.total_amount
+                    "total_amount": p.total_amount,
+                    "created_at": p.created_at
                 }
                 for p in paginated["items"]
             ],
@@ -112,6 +114,7 @@ def get_purchase(
             "supplier_name": purchase.supplier_name,
             "purchase_date": purchase.purchase_date,
             "total_amount": purchase.total_amount,
+            "created_at": purchase.created_at,
             "items": [
                 {
                     "id": item.id,

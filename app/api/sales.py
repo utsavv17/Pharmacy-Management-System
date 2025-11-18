@@ -46,6 +46,7 @@ def create_sale(
             "customer_name": sale.customer_name,
             "sale_date": sale.sale_date,
             "total_amount": sale.total_amount,
+            "created_at": sale.created_at,
             "items": [
                 {
                     "id": it.id,
@@ -88,6 +89,7 @@ def get_sale(
             "customer_name": sale.customer_name,
             "sale_date": sale.sale_date,
             "total_amount": sale.total_amount,
+            "created_at": sale.created_at,
             "items": [
                 {
                     "id": it.id,

@@ -41,7 +41,9 @@ def create_medicine(
             "brand": med.brand,
             "category": med.category,
             "unit": med.unit,
-            "strength": med.strength
+            "strength": med.strength,
+            "barcode": med.barcode,
+            "image_url": med.image_url
         }
     }
 
@@ -85,6 +87,8 @@ def list_medicines(
                     "category": item[0].category,
                     "unit": item[0].unit,
                     "strength": item[0].strength,
+                    "barcode": item[0].barcode,
+                    "image_url": item[0].image_url,
                     "price": item[1] if len(item) > 1 and item[1] else None,
                     "expiry_date": item[2].isoformat() if len(item) > 2 and item[2] else None
                 }
@@ -122,7 +126,9 @@ def update_medicine(
             "brand": med.brand,
             "category": med.category,
             "unit": med.unit,
-            "strength": med.strength
+            "strength": med.strength,
+            "barcode": med.barcode,
+            "image_url": med.image_url
         }
     }
 

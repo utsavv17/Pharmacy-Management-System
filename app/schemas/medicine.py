@@ -7,6 +7,8 @@ class MedicineBase(BaseModel):
     category: str | None = None
     unit: str | None = None
     strength: str | None = None
+    barcode: str | None = None
+    image_url: str | None = None
 
 
 class MedicineCreateSchema(MedicineBase):
@@ -20,6 +22,8 @@ class MedicineUpdateSchema(BaseModel):
     category: str | None = None
     unit: str | None = None
     strength: str | None = None
+    barcode: str | None = None
+    image_url: str | None = None
 
 
 class MedicineResponse(BaseModel):
@@ -30,6 +34,8 @@ class MedicineResponse(BaseModel):
     category: str | None
     unit: str | None
     strength: str | None
+    barcode: str | None
+    image_url: str | None
 
     class Config:
         from_attributes = True

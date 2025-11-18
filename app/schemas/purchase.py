@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from typing import List
 
 # Purchase Item Schema
@@ -38,6 +38,7 @@ class PurchaseResponse(BaseModel):
     supplier_name: str | None
     purchase_date: date
     total_amount: float
+    created_at: datetime | None
     items: List[PurchaseItemResponse]
 
     class Config:

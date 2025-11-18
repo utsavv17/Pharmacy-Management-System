@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from typing import List
 
 class SaleItemCreate(BaseModel):
@@ -30,18 +30,7 @@ class SaleResponse(BaseModel):
     customer_name: str | None
     sale_date: date
     total_amount: float
-    items: List[SaleItemResponse]
-
-    class Config:
-        from_attributes = True
-
-
-class SaleResponse(BaseModel):
-    id: int
-    invoice_number: str
-    customer_name: str | None
-    sale_date: date
-    total_amount: float
+    created_at: datetime | None
     items: List[SaleItemResponse]
 
     class Config:
