@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import APIKeyHeader
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
+from jose.exceptions import ExpiredSignatureError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -20,30 +21,45 @@ def auth_exception():
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-auth_header = APIKeyHeader(name="Authorization", auto_error=False)
+security = HTTPBearer(auto_error=False)
 
 
 
 def get_current_user(
-    token: str = Depends(auth_header),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
 
-    if not token:
-        # No token provided → custom error
+    if not credentials:
         raise auth_exception()
 
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        payload = jwt.decode(
+            credentials.credentials, 
+            settings.secret_key, 
+            algorithms=["HS256"],
+            options={"verify_exp": True}  # Explicitly verify expiration
+        )
+        
         email = payload.get("sub")
-        if email is None:
-            raise JWTError()
+        if not email:
+            raise auth_exception()
 
         user = db.query(User).filter(User.email == email).first()
         if not user:
-            raise JWTError()
+            raise auth_exception()
 
         return user
 
-    except JWTError:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "success": False,
+                "message": "Token has expired",
+                "error": "TOKEN_EXPIRED"
+            },
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    except (JWTError, Exception):
         raise auth_exception()
