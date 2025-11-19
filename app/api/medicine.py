@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.schemas.medicine import MedicineCreateSchema, MedicineUpdateSchema
+from typing import List
 from app.services.medicine_service import MedicineService
 from app.core.deps import get_current_user
 from app.main import get_db
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/medicines", tags=["Medicines"])
 
 
 # Create Medicine
-@router.post("/create")
+@router.post("/")
 def create_medicine(
     payload: MedicineCreateSchema,
     db: Session = Depends(get_db),
@@ -47,6 +48,85 @@ def create_medicine(
         }
     }
 
+
+# Bulk Create Medicines
+@router.post("/bulk-create")
+def bulk_create_medicines(
+    medicines: List[MedicineCreateSchema],
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    created_medicines = []
+    errors = []
+    
+    for i, medicine_data in enumerate(medicines):
+        med, error = MedicineService.create(db, medicine_data)
+        
+        if error:
+            errors.append({
+                "index": i,
+                "name": medicine_data.name,
+                "error": error
+            })
+        else:
+            created_medicines.append({
+                "id": med.id,
+                "name": med.name,
+                "generic_name": med.generic_name,
+                "brand": med.brand,
+                "category": med.category,
+                "unit": med.unit,
+                "strength": med.strength,
+                "barcode": med.barcode,
+                "image_url": med.image_url
+            })
+    
+    return {
+        "success": True,
+        "message": f"Bulk operation completed. {len(created_medicines)} created, {len(errors)} failed.",
+        "data": {
+            "created": created_medicines,
+            "errors": errors,
+            "summary": {
+                "total": len(medicines),
+                "created": len(created_medicines),
+                "failed": len(errors)
+            }
+        }
+    }
+
+
+# Get Medicine Detail
+@router.get("/{medicine_id}")
+def get_medicine_detail(
+    medicine_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    medicine = db.query(Medicine).filter(Medicine.id == medicine_id).first()
+    
+    if not medicine:
+        return {
+            "success": False,
+            "message": "Medicine not found",
+            "error": "NOT_FOUND"
+        }
+    
+    return {
+        "success": True,
+        "message": "Medicine details fetched successfully",
+        "data": {
+            "id": medicine.id,
+            "name": medicine.name,
+            "generic_name": medicine.generic_name,
+            "brand": medicine.brand,
+            "category": medicine.category,
+            "unit": medicine.unit,
+            "strength": medicine.strength,
+            "barcode": medicine.barcode,
+            "image_url": medicine.image_url
+        }
+    }
 
 # List Medicines
 @router.get("/")
