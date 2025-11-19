@@ -9,6 +9,8 @@ class Sale(Base):
     invoice_number = Column(String, nullable=False)
     customer_name = Column(String, nullable=True)
     sale_date = Column(Date, nullable=False)
+    subtotal = Column(Float, nullable=False, default=0)
+    discount_amount = Column(Float, nullable=False, default=0)
     total_amount = Column(Float, nullable=False, default=0)
     created_at = Column(DateTime, nullable=True)
 

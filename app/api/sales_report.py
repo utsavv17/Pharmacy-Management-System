@@ -108,6 +108,8 @@ def list_sales(
     # Year totals
     year_sales_count = db.query(func.count(Sale.id)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
     year_sale_amount = db.query(func.sum(Sale.total_amount)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+    year_subtotal = db.query(func.sum(Sale.subtotal)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+    year_discount = db.query(func.sum(Sale.discount_amount)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
     year_revenue = db.query(func.sum((SaleItem.selling_price - Batch.purchase_price) * SaleItem.quantity)).join(Sale).join(Batch, SaleItem.batch_id == Batch.id).filter(extract('year', Sale.sale_date) == year).scalar() or 0
     year_items_sold = db.query(func.sum(SaleItem.quantity)).join(Sale).filter(extract('year', Sale.sale_date) == year).scalar() or 0
 
@@ -121,6 +123,8 @@ def list_sales(
                     "invoice_number": s.invoice_number,
                     "customer_name": s.customer_name,
                     "sale_date": s.sale_date,
+                    "subtotal": s.subtotal,
+                    "discount_amount": s.discount_amount,
                     "total_amount": s.total_amount
                 }
                 for s in paginated["items"]
@@ -129,6 +133,8 @@ def list_sales(
             "year_summary": {
                 "year": year,
                 "total_sales": year_sales_count,
+                "total_subtotal": float(year_subtotal),
+                "total_discount": float(year_discount),
                 "total_sale_amount": float(year_sale_amount),
                 "total_revenue": float(year_revenue),
                 "total_items_sold": int(year_items_sold)

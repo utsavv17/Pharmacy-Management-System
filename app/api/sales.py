@@ -45,6 +45,8 @@ def create_sale(
             "invoice_number": sale.invoice_number,
             "customer_name": sale.customer_name,
             "sale_date": sale.sale_date,
+            "subtotal": sale.subtotal,
+            "discount_amount": sale.discount_amount,
             "total_amount": sale.total_amount,
             "created_at": sale.created_at,
             "items": [
@@ -88,6 +90,8 @@ def get_sale(
             "invoice_number": sale.invoice_number,
             "customer_name": sale.customer_name,
             "sale_date": sale.sale_date,
+            "subtotal": sale.subtotal,
+            "discount_amount": sale.discount_amount,
             "total_amount": sale.total_amount,
             "created_at": sale.created_at,
             "items": [

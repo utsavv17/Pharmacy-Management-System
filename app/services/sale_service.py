@@ -17,6 +17,8 @@ class SaleService:
             invoice_number=invoice_number,
             customer_name=data.customer_name or "Walk-in Customer",
             sale_date=data.sale_date or date.today(),
+            subtotal=0,
+            discount_amount=data.discount_amount,
             total_amount=0
         )
         db.add(sale)
@@ -75,8 +77,9 @@ class SaleService:
                     f"Not enough stock for medicine_id {item.medicine_id}. Missing: {needed_qty}"
                 )
 
-        # 3) Update total sale amount
-        sale.total_amount = total_amount
+        # 3) Update sale amounts
+        sale.subtotal = total_amount
+        sale.total_amount = total_amount - sale.discount_amount
         db.commit()
         db.refresh(sale)
 
