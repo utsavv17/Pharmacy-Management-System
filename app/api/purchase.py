@@ -67,6 +67,7 @@ def list_purchases(
             (Purchase.supplier_name.ilike(s))
         )
 
+    query = query.order_by(Purchase.created_at.desc())
     paginated = Paginator.paginate(query, page, limit)
 
     return {

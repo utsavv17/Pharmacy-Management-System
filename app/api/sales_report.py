@@ -103,6 +103,7 @@ def list_sales(
             (Sale.customer_name.ilike(s))
         )
 
+    query = query.order_by(Sale.created_at.desc())
     paginated = Paginator.paginate(query, page, limit)
     
     # Year totals
