@@ -1,21 +1,70 @@
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
 from app.models.user import User
+from app.models.token import RefreshToken, BlockedToken
 from app.core.security import verify_password
-from app.core.jwt import create_access_token
+from app.core.jwt import create_access_token, create_refresh_token
+from app.core.config import get_settings
+
+settings = get_settings()
 
 class AuthService:
 
     @staticmethod
     def login(db: Session, email: str, password: str):
-
         user = db.query(User).filter(User.email == email).first()
 
         if not user:
-            return None, None, "USER_NOT_FOUND"
+            return None, None, None, None, "USER_NOT_FOUND"
 
         if not verify_password(password, user.hashed_password):
-            return None, None, "PASSWORD_INCORRECT"
+            return None, None, None, None, "PASSWORD_INCORRECT"
 
-        token = create_access_token({"sub": user.email})
+        access_token, expires_in = create_access_token({"sub": user.email})
+        refresh_token = create_refresh_token()
+        
+        # Store refresh token
+        refresh_expires = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
+        db_refresh_token = RefreshToken(
+            token=refresh_token,
+            user_id=user.id,
+            expires_at=refresh_expires
+        )
+        db.add(db_refresh_token)
+        db.commit()
 
-        return token, user, None
+        return access_token, refresh_token, expires_in, user, None
+
+    @staticmethod
+    def refresh_access_token(db: Session, refresh_token: str):
+        db_token = db.query(RefreshToken).filter(
+            RefreshToken.token == refresh_token,
+            RefreshToken.expires_at > datetime.utcnow()
+        ).first()
+        
+        if not db_token:
+            return None, None, "INVALID_REFRESH_TOKEN"
+            
+        user = db.query(User).filter(User.id == db_token.user_id).first()
+        if not user:
+            return None, None, "USER_NOT_FOUND"
+            
+        access_token, expires_in = create_access_token({"sub": user.email})
+        return access_token, expires_in, None
+
+    @staticmethod
+    def logout(db: Session, access_token: str, refresh_token: str = None):
+        # Block access token
+        blocked_token = BlockedToken(token=access_token)
+        db.add(blocked_token)
+        
+        # Remove refresh token if provided
+        if refresh_token:
+            db.query(RefreshToken).filter(RefreshToken.token == refresh_token).delete()
+            
+        db.commit()
+        return True
+
+    @staticmethod
+    def is_token_blocked(db: Session, token: str) -> bool:
+        return db.query(BlockedToken).filter(BlockedToken.token == token).first() is not None

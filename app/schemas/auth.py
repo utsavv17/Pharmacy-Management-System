@@ -4,7 +4,6 @@ class LoginSchema(BaseModel):
     email: EmailStr
     password: str
 
-
 class TokenResponse(BaseModel):
     success: bool
     message: str

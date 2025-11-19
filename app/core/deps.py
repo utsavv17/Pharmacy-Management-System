@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.main import get_db
 from app.models.user import User
+from app.services.auth_service import AuthService
 
 settings = get_settings()
 
@@ -23,8 +24,6 @@ def auth_exception():
 
 security = HTTPBearer(auto_error=False)
 
-
-
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
@@ -33,12 +32,24 @@ def get_current_user(
     if not credentials:
         raise auth_exception()
 
+    # Check if token is blocked
+    if AuthService.is_token_blocked(db, credentials.credentials):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "success": False,
+                "message": "Token has been revoked",
+                "error": "TOKEN_REVOKED"
+            },
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
     try:
         payload = jwt.decode(
             credentials.credentials, 
             settings.secret_key, 
             algorithms=["HS256"],
-            options={"verify_exp": True}  # Explicitly verify expiration
+            options={"verify_exp": True}
         )
         
         email = payload.get("sub")

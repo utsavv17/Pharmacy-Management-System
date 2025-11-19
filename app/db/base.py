@@ -10,3 +10,4 @@ from app.models.sale import Sale
 from app.models.sale_item import SaleItem
 from app.models.supplier import Supplier
 from app.models.settings import Settings
+from app.models.token import RefreshToken, BlockedToken
