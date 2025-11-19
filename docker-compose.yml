@@ -1,4 +1,15 @@
 services:
+  app:
+    build: .
+    container_name: pharmacy-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/pharmacy_db
+    restart: unless-stopped
+
   postgres:
     image: postgres:15-alpine
     container_name: pharmacy-db

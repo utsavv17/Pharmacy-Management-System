@@ -28,3 +28,4 @@ tmp/
 
 # Database files (if applicable)
 *.db
+security.log
