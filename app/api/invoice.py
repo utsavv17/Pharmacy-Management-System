@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import time
+import random
 
 from app.main import get_db
 from app.core.deps import get_current_user
@@ -26,11 +28,12 @@ def download_sale_invoice(
         }
 
     pdf_buffer = PDFService.generate_sale_invoice(sale)
+    unique_id = f"{int(time.time())}{random.randint(100, 999)}"
 
     return StreamingResponse(
         pdf_buffer,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename=invoice_{sale.invoice_number}.pdf"
+            "Content-Disposition": f"attachment; filename=invoice_{sale.invoice_number}_{unique_id}.pdf"
         }
     )
