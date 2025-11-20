@@ -6,9 +6,9 @@ from app.core.deps import get_current_user
 from app.main import get_db
 from app.services.sale_service import SaleService
 from app.models.sale import Sale
+from app.models.medicine import Medicine
 from app.schemas.sale import SaleCreate, SaleResponse
 from app.utils.pagination import Paginator
-from app.models.sale import Sale
 
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
@@ -82,6 +82,20 @@ def get_sale(
             "error": "NOT_FOUND"
         }
 
+    # Get medicine details for each item
+    items_with_medicine = []
+    for item in sale.items:
+        medicine = db.query(Medicine).filter(Medicine.id == item.medicine_id).first()
+        items_with_medicine.append({
+            "id": item.id,
+            "medicine_id": item.medicine_id,
+            "medicine_name": medicine.name if medicine else None,
+            "medicine_strength": medicine.strength if medicine else None,
+            "batch_id": item.batch_id,
+            "quantity": item.quantity,
+            "selling_price": item.selling_price
+        })
+
     return {
         "success": True,
         "message": "Sale details fetched",
@@ -94,15 +108,6 @@ def get_sale(
             "discount_amount": sale.discount_amount,
             "total_amount": sale.total_amount,
             "created_at": sale.created_at,
-            "items": [
-                {
-                    "id": it.id,
-                    "medicine_id": it.medicine_id,
-                    "batch_id": it.batch_id,
-                    "quantity": it.quantity,
-                    "selling_price": it.selling_price
-                }
-                for it in sale.items
-            ]
+            "items": items_with_medicine
         }
     }
