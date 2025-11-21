@@ -7,11 +7,77 @@ from app.main import get_db
 from app.services.sale_service import SaleService
 from app.models.sale import Sale
 from app.models.medicine import Medicine
+from app.models.batch import Batch
 from app.schemas.sale import SaleCreate, SaleResponse
 from app.utils.pagination import Paginator
 
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
+
+
+@router.get("/pos/medicines")
+def get_pos_medicines(
+    page: int = 1,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get all medicines with available stock for POS system
+    """
+    from sqlalchemy import func
+    
+    query = (
+        db.query(
+            Medicine.id,
+            Medicine.name,
+            Medicine.brand,
+            Medicine.category,
+            Medicine.strength,
+            Medicine.barcode,
+            func.min(Batch.expiry_date).label("expiry_date"),
+            func.min(Batch.selling_price).label("price"),
+            func.sum(Batch.quantity).label("total_quantity")
+        )
+        .join(Batch, Medicine.id == Batch.medicine_id)
+        .filter(Batch.quantity > 0)
+        .group_by(
+            Medicine.id,
+            Medicine.name,
+            Medicine.brand,
+            Medicine.category,
+            Medicine.strength,
+            Medicine.barcode
+        )
+        .having(func.sum(Batch.quantity) > 0)
+        .order_by(Medicine.name)
+    )
+    
+    paginated = Paginator.paginate(query, page, limit)
+    
+    medicines_list = [
+        {
+            "id": m.id,
+            "name": m.name,
+            "brand": m.brand,
+            "category": m.category,
+            "strength": m.strength,
+            "price": float(m.price),
+            "expiry_date": str(m.expiry_date),
+            "barcode": m.barcode,
+            "quantity": int(m.total_quantity)
+        }
+        for m in paginated["items"]
+    ]
+    
+    return {
+        "success": True,
+        "message": "POS medicines fetched successfully",
+        "data": {
+            "items": medicines_list,
+            "pagination": paginated["pagination"]
+        }
+    }
 
 
 @router.post("/create")
