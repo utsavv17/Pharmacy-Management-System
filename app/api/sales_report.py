@@ -111,7 +111,7 @@ def list_sales(
     year_sale_amount = db.query(func.sum(Sale.total_amount)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
     year_subtotal = db.query(func.sum(Sale.subtotal)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
     year_discount = db.query(func.sum(Sale.discount_amount)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
-    year_revenue = db.query(func.sum((SaleItem.selling_price - Batch.purchase_price) * SaleItem.quantity)).join(Sale).join(Batch, SaleItem.batch_id == Batch.id).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+    year_revenue = DashboardService.calculate_year_revenue(db, year)
     year_items_sold = db.query(func.sum(SaleItem.quantity)).join(Sale).filter(extract('year', Sale.sale_date) == year).scalar() or 0
 
     return {

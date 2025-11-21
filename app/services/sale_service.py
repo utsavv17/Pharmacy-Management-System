@@ -19,7 +19,8 @@ class SaleService:
             sale_date=data.sale_date or date.today(),
             subtotal=0,
             discount_amount=data.discount_amount,
-            total_amount=0
+            total_amount=0,
+            created_at=datetime.now()
         )
         db.add(sale)
         db.commit()

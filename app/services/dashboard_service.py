@@ -17,12 +17,29 @@ class DashboardService:
     def today_summary(db: Session):
         today = date.today()
 
-        # Today's Sales Amount
-        total_sales = (
-            db.query(func.sum(Sale.total_amount))
+        # Today's Revenue (quantity * selling_price - purchase_price - discount_amount)
+        # Calculate gross profit from items
+        today_gross_profit = (
+            db.query(
+                func.sum(
+                    (SaleItem.selling_price - Batch.purchase_price) * SaleItem.quantity
+                )
+            )
+            .select_from(SaleItem)
+            .join(Sale, SaleItem.sale_id == Sale.id)
+            .join(Batch, SaleItem.batch_id == Batch.id)
             .filter(Sale.sale_date == today)
             .scalar()
         ) or 0
+        
+        # Calculate total discount for today
+        today_discount = (
+            db.query(func.sum(Sale.discount_amount))
+            .filter(Sale.sale_date == today)
+            .scalar()
+        ) or 0
+        
+        today_revenue = today_gross_profit - today_discount
 
         # Today's Purchases Amount
         total_purchases = (
@@ -52,14 +69,19 @@ class DashboardService:
             "today_purchases": float(total_purchases),
             "today_invoices": int(total_invoices),
             "today_items_sold": int(total_items_sold),
-            "today_revenue": float(total_sales)
+            "today_revenue": float(today_revenue)
         }
 
     # Grand Total Summary (All Time)
     @staticmethod
     def grand_total_summary(db: Session):
-        # Total medicines
-        total_medicines = db.query(func.count(Medicine.id)).scalar() or 0
+        # Total medicines with stock (quantity > 0)
+        total_medicines = (
+            db.query(func.count(func.distinct(Medicine.id)))
+            .join(Batch, Medicine.id == Batch.medicine_id)
+            .filter(Batch.quantity > 0)
+            .scalar()
+        ) or 0
         
         # Total suppliers
         total_suppliers = db.query(func.count(Supplier.id)).scalar() or 0
@@ -70,14 +92,30 @@ class DashboardService:
         # Total items sold (all time)
         total_items_sold = db.query(func.sum(SaleItem.quantity)).scalar() or 0
         
-        # Total revenue (all time)
-        total_revenue = db.query(func.sum(Sale.total_amount)).scalar() or 0.0
+        # Total discount amount (all time)
+        total_discount = db.query(func.sum(Sale.discount_amount)).scalar() or 0.0
+        
+        # Total revenue (all time) - proper calculation with discount
+        total_revenue = (
+            db.query(
+                func.sum(
+                    (SaleItem.selling_price - Batch.purchase_price) * SaleItem.quantity
+                )
+            )
+            .select_from(SaleItem)
+            .join(Sale, SaleItem.sale_id == Sale.id)
+            .join(Batch, SaleItem.batch_id == Batch.id)
+            .scalar()
+        ) or 0.0
+        
+        total_revenue -= total_discount
 
         return {
             "total_medicines": total_medicines,
             "total_suppliers": total_suppliers,
             "total_sales": total_sales_count,
             "total_items_sold": int(total_items_sold),
+            "total_discount": float(total_discount),
             "total_revenue": float(total_revenue)
         }
 
@@ -136,6 +174,34 @@ class DashboardService:
             "near_expiry": near_expiry_list,
             "total_stock_value": float(stock_value)
         }
+
+    # Year Revenue Calculation (Reusable)
+    @staticmethod
+    def calculate_year_revenue(db: Session, year: int):
+        from sqlalchemy import extract
+        
+        # Calculate gross profit
+        gross_profit = (
+            db.query(
+                func.sum(
+                    (SaleItem.selling_price - Batch.purchase_price) * SaleItem.quantity
+                )
+            )
+            .select_from(SaleItem)
+            .join(Sale, SaleItem.sale_id == Sale.id)
+            .join(Batch, SaleItem.batch_id == Batch.id)
+            .filter(extract('year', Sale.sale_date) == year)
+            .scalar()
+        ) or 0
+        
+        # Calculate total discount for the year
+        year_discount = (
+            db.query(func.sum(Sale.discount_amount))
+            .filter(extract('year', Sale.sale_date) == year)
+            .scalar()
+        ) or 0
+        
+        return gross_profit - year_discount
 
     # 3. Sales Chart (Last 7 Days)
     @staticmethod
