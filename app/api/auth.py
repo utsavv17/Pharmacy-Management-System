@@ -25,11 +25,15 @@ def get_me(user: User = Depends(get_current_user)):
     }
 
 @router.post("/login")
-def login(payload: LoginSchema, response: Response, db: Session = Depends(get_db)):
+def login(payload: LoginSchema, request: Request, response: Response, db: Session = Depends(get_db)):
+    # Get client IP
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+    
     access_token, refresh_token, expires_in, user, error = AuthService.login(
         db,
         email=payload.email,
-        password=payload.password
+        password=payload.password,
+        ip_address=client_ip
     )
 
     if error == "USER_NOT_FOUND":

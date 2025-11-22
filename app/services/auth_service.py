@@ -5,20 +5,38 @@ from app.models.token import RefreshToken, BlockedToken
 from app.core.security import verify_password
 from app.core.jwt import create_access_token, create_refresh_token
 from app.core.config import get_settings
+from app.core.security_utils import SecurityUtils
+import logging
+import time
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 class AuthService:
 
     @staticmethod
-    def login(db: Session, email: str, password: str):
+    def login(db: Session, email: str, password: str, ip_address: str = None):
+        # Add small delay to prevent timing attacks
+        start_time = time.time()
+        
+        # Sanitize email input
+        email = SecurityUtils.sanitize_input(email, max_length=255)
+        
         user = db.query(User).filter(User.email == email).first()
 
         if not user:
+            # Constant time delay to prevent user enumeration
+            time.sleep(max(0, 0.5 - (time.time() - start_time)))
+            logger.warning(f"Failed login attempt for non-existent user: {email} from IP: {ip_address}")
             return None, None, None, None, "USER_NOT_FOUND"
 
         if not verify_password(password, user.hashed_password):
+            # Constant time delay
+            time.sleep(max(0, 0.5 - (time.time() - start_time)))
+            logger.warning(f"Failed login attempt for user: {email} from IP: {ip_address}")
             return None, None, None, None, "PASSWORD_INCORRECT"
+        
+        logger.info(f"Successful login for user: {email} from IP: {ip_address}")
 
         access_token, expires_in = create_access_token({"sub": user.email})
         refresh_token = create_refresh_token()
