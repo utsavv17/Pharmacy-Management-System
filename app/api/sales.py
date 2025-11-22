@@ -17,6 +17,7 @@ router = APIRouter(prefix="/sales", tags=["Sales"])
 
 @router.get("/pos/medicines")
 def get_pos_medicines(
+    search: str | None = None,
     page: int = 1,
     limit: int = 10,
     db: Session = Depends(get_db),
@@ -31,6 +32,7 @@ def get_pos_medicines(
         db.query(
             Medicine.id,
             Medicine.name,
+            Medicine.generic_name,
             Medicine.brand,
             Medicine.category,
             Medicine.strength,
@@ -44,14 +46,23 @@ def get_pos_medicines(
         .group_by(
             Medicine.id,
             Medicine.name,
+            Medicine.generic_name,
             Medicine.brand,
             Medicine.category,
             Medicine.strength,
             Medicine.barcode
         )
         .having(func.sum(Batch.quantity) > 0)
-        .order_by(Medicine.name)
     )
+    
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (Medicine.name.ilike(s)) |
+            (Medicine.generic_name.ilike(s))
+        )
+    
+    query = query.order_by(Medicine.name)
     
     paginated = Paginator.paginate(query, page, limit)
     
@@ -59,6 +70,7 @@ def get_pos_medicines(
         {
             "id": m.id,
             "name": m.name,
+            "generic_name": m.generic_name,
             "brand": m.brand,
             "category": m.category,
             "strength": m.strength,
