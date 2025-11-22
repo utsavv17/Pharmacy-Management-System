@@ -150,7 +150,11 @@ def list_medicines(
     )
 
     if search:
-        query = query.filter(Medicine.name.ilike(f"%{search}%"))
+        s = f"%{search}%"
+        query = query.filter(
+            (Medicine.name.ilike(s)) |
+            (Medicine.generic_name.ilike(s))
+        )
 
     paginated = Paginator.paginate(query, page, limit)
 
