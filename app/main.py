@@ -1,14 +1,34 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
+import logging
 
 from app.core.config import get_settings
 from app.utils.settings import initialize_settings
 from app.db.db import get_db
 
 from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard, supplier, settings
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.request_logging import RequestLoggingMiddleware
 
-app = FastAPI()
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('security.log'),
+        logging.StreamHandler()
+    ]
+)
+
+app = FastAPI(
+    title="Pharmacy Management System",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
 
 origins = [
     "http://localhost",
@@ -17,12 +37,33 @@ origins = [
     "http://54.179.188.174"
 ]
 
+# Security Middleware (order matters - applied in reverse)
+# 1. Request logging (first to log everything)
+app.add_middleware(RequestLoggingMiddleware)
+
+# 2. Security headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Rate limiting
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=60,
+    requests_per_hour=1000
+)
+
+# 4. CORS (after rate limiting to prevent abuse)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# 5. Trusted host (validate Host header)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "54.179.188.174", "develop.d393xravvewyoy.amplifyapp.com", "*"]
 )
 
 initialize_settings()

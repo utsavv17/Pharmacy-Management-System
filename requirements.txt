@@ -11,3 +11,4 @@ pydantic-settings
 python-jose
 pydantic[email]
 reportlab
+slowapi
