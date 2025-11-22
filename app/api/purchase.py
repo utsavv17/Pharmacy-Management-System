@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.purchase import Purchase
 from app.schemas.purchase import PurchaseCreate, PurchaseResponse
+from typing import List
 from app.services.purchase_service import PurchaseService
 from app.core.deps import get_current_user
 from app.main import get_db
@@ -45,6 +46,46 @@ def create_purchase(
                 }
                 for item in purchase.items
             ]
+        }
+    }
+
+@router.post("/bulk-create")
+def create_multiple_purchases(
+    purchases: List[PurchaseCreate],
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    created_purchases = []
+    errors = []
+    
+    for i, purchase_data in enumerate(purchases):
+        try:
+            purchase = PurchaseService.create_purchase(db, purchase_data)
+            created_purchases.append({
+                "id": purchase.id,
+                "invoice_number": purchase.invoice_number,
+                "supplier_name": purchase.supplier_name,
+                "purchase_date": purchase.purchase_date,
+                "total_amount": purchase.total_amount
+            })
+        except Exception as e:
+            errors.append({
+                "index": i,
+                "invoice_number": purchase_data.invoice_number,
+                "error": str(e)
+            })
+    
+    return {
+        "success": len(errors) == 0,
+        "message": f"Created {len(created_purchases)} purchases" + (f", {len(errors)} failed" if errors else ""),
+        "data": {
+            "created": created_purchases,
+            "errors": errors,
+            "summary": {
+                "total_requested": len(purchases),
+                "created_count": len(created_purchases),
+                "error_count": len(errors)
+            }
         }
     }
 

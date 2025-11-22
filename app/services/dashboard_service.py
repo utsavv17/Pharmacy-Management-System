@@ -66,10 +66,10 @@ class DashboardService:
         return {
             "date": str(today),
             "today_sales": int(total_invoices),
-            "today_purchases": float(total_purchases),
+            "today_purchases": round(float(total_purchases), 2),
             "today_invoices": int(total_invoices),
             "today_items_sold": int(total_items_sold),
-            "today_revenue": float(today_revenue)
+            "today_revenue": round(float(today_revenue), 2)
         }
 
     # Grand Total Summary (All Time)
@@ -115,8 +115,8 @@ class DashboardService:
             "total_suppliers": total_suppliers,
             "total_sales": total_sales_count,
             "total_items_sold": int(total_items_sold),
-            "total_discount": float(total_discount),
-            "total_revenue": float(total_revenue)
+            "total_discount": round(float(total_discount), 2),
+            "total_revenue": round(float(total_revenue), 2)
         }
 
     # 2. Inventory Summary
@@ -172,7 +172,7 @@ class DashboardService:
         return {
             "low_stock": low_stock_list,
             "near_expiry": near_expiry_list,
-            "total_stock_value": float(stock_value)
+            "total_stock_value": round(float(stock_value), 2)
         }
 
     # Year Revenue Calculation (Reusable)
@@ -201,7 +201,7 @@ class DashboardService:
             .scalar()
         ) or 0
         
-        return gross_profit - year_discount
+        return round(gross_profit - year_discount, 2)
 
     # 3. Sales Chart (Last 7 Days)
     @staticmethod
@@ -223,7 +223,7 @@ class DashboardService:
         return [
             {
                 "date": str(row.sale_date),
-                "amount": float(row.amount)
+                "amount": round(float(row.amount), 2)
             }
             for row in sales_data
         ]

@@ -140,10 +140,45 @@ def create_sale(
         }
     }
 
-
-
-
-
+@router.post("/bulk-create")
+def create_multiple_sales(
+    sales: List[SaleCreate],
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    created_sales = []
+    errors = []
+    
+    for i, sale_data in enumerate(sales):
+        try:
+            sale = SaleService.create_sale(db, sale_data)
+            created_sales.append({
+                "id": sale.id,
+                "invoice_number": sale.invoice_number,
+                "customer_name": sale.customer_name,
+                "sale_date": sale.sale_date,
+                "total_amount": sale.total_amount
+            })
+        except Exception as e:
+            errors.append({
+                "index": i,
+                "invoice_number": getattr(sale_data, 'invoice_number', None),
+                "error": str(e)
+            })
+    
+    return {
+        "success": len(errors) == 0,
+        "message": f"Created {len(created_sales)} sales" + (f", {len(errors)} failed" if errors else ""),
+        "data": {
+            "created": created_sales,
+            "errors": errors,
+            "summary": {
+                "total_requested": len(sales),
+                "created_count": len(created_sales),
+                "error_count": len(errors)
+            }
+        }
+    }
 
 @router.get("/{sale_id}")
 def get_sale(

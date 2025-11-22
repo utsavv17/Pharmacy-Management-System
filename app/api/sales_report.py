@@ -134,10 +134,10 @@ def list_sales(
             "year_summary": {
                 "year": year,
                 "total_sales": year_sales_count,
-                "total_subtotal": float(year_subtotal),
-                "total_discount": float(year_discount),
-                "total_sale_amount": float(year_sale_amount),
-                "total_revenue": float(year_revenue),
+                "total_subtotal": round(float(year_subtotal), 2),
+                "total_discount": round(float(year_discount), 2),
+                "total_sale_amount": round(float(year_sale_amount), 2),
+                "total_revenue": round(float(year_revenue), 2),
                 "total_items_sold": int(year_items_sold)
             }
         }
