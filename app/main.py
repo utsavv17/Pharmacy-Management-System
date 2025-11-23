@@ -25,9 +25,25 @@ logging.basicConfig(
 
 app = FastAPI(
     title="Pharmacy Management System",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    description="""
+    A comprehensive pharmacy management system with enterprise-grade security.
+    
+    ## Features
+    * **Authentication** - Secure JWT-based auth with refresh tokens
+    * **Medicine Management** - Track medicines, batches, and inventory
+    * **Sales & Purchases** - Complete transaction management
+    * **Reports** - Sales reports and dashboard analytics
+    * **Security** - Rate limiting, request logging, and protection against common attacks
+    
+    ## Security
+    * Rate limiting: 60 req/min globally, 5 login attempts/min
+    * Protected against: XSS, CSRF, SQL injection, brute force attacks
+    * All requests logged for audit trail
+    """,
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 origins = [
