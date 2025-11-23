@@ -7,9 +7,11 @@ from app.services.auth_service import AuthService
 from app.main import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBearer(auto_error=False)
+settings = get_settings()
 
 @router.get("/me")
 def get_me(user: User = Depends(get_current_user)):
@@ -57,13 +59,15 @@ def login(payload: LoginSchema, request: Request, response: Response, db: Sessio
         )
 
     # Set refresh token as HTTP-only cookie
+    # secure=True only in production (HTTPS), False in development/HTTP
+    is_production = settings.app_env == "production"
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         max_age=30 * 24 * 60 * 60,  # 30 days
         httponly=True,
-        secure=True,
-        samesite="strict"
+        secure=is_production,  # Only require HTTPS in production
+        samesite="lax" if not is_production else "strict"  # More flexible for HTTP
     )
 
     return {
@@ -139,7 +143,12 @@ def logout(
     AuthService.logout(db, credentials.credentials, refresh_token)
     
     # Clear refresh token cookie
-    response.delete_cookie("refresh_token")
+    is_production = settings.app_env == "production"
+    response.delete_cookie(
+        key="refresh_token",
+        secure=is_production,
+        samesite="lax" if not is_production else "strict"
+    )
     
     return {
         "success": True,
