@@ -14,5 +14,6 @@ class Medicine(Base):
     strength = Column(String, nullable=True)   # 500mg, 100mg etc.
     barcode = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
+    minimum_stock_level = Column(Integer, default=20, nullable=False)
     
     batches = relationship("Batch", back_populates="medicine", cascade="all, delete")

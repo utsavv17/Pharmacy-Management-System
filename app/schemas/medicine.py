@@ -9,6 +9,7 @@ class MedicineBase(BaseModel):
     strength: str | None = None
     barcode: str | None = None
     image_url: str | None = None
+    minimum_stock_level: int = 20
 
 
 class MedicineCreateSchema(MedicineBase):
@@ -24,6 +25,7 @@ class MedicineUpdateSchema(BaseModel):
     strength: str | None = None
     barcode: str | None = None
     image_url: str | None = None
+    minimum_stock_level: int | None = None
 
 
 class MedicineResponse(BaseModel):
@@ -36,6 +38,7 @@ class MedicineResponse(BaseModel):
     strength: str | None
     barcode: str | None
     image_url: str | None
+    minimum_stock_level: int
 
     class Config:
         from_attributes = True

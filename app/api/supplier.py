@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.main import get_db
-from app.schemas.supplier import SupplierCreate
+from app.schemas.supplier import SupplierCreate, SupplierUpdate
 from app.services.supplier_service import SupplierService
 from app.utils.pagination import Paginator
 from app.models.supplier import Supplier
@@ -53,4 +53,69 @@ def list_suppliers(
             "items": paginated["items"],
             "pagination": paginated["pagination"]
         }
+    }
+
+
+@router.get("/{supplier_id}")
+def get_supplier(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    supplier = SupplierService.get_supplier(db, supplier_id)
+    if not supplier:
+        return {
+            "success": False,
+            "message": "Supplier not found",
+            "error": "NOT_FOUND"
+        }
+        
+    return {
+        "success": True,
+        "message": "Supplier fetched successfully",
+        "data": supplier
+    }
+
+
+@router.put("/{supplier_id}")
+def update_supplier(
+    supplier_id: int,
+    payload: SupplierUpdate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    supplier, error = SupplierService.update_supplier(db, supplier_id, payload)
+    
+    if error == "NOT_FOUND":
+        return {
+            "success": False,
+            "message": "Supplier not found",
+            "error": "NOT_FOUND"
+        }
+        
+    return {
+        "success": True,
+        "message": "Supplier updated successfully",
+        "data": supplier
+    }
+
+
+@router.delete("/{supplier_id}")
+def delete_supplier(
+    supplier_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    error = SupplierService.delete_supplier(db, supplier_id)
+    
+    if error == "NOT_FOUND":
+        return {
+            "success": False,
+            "message": "Supplier not found",
+            "error": "NOT_FOUND"
+        }
+        
+    return {
+        "success": True,
+        "message": "Supplier deleted successfully"
     }

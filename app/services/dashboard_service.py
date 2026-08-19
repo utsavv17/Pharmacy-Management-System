@@ -122,12 +122,12 @@ class DashboardService:
     # 2. Inventory Summary
     @staticmethod
     def inventory_summary(db: Session):
-        # Low stock (< 10)
+        # Low stock (<= minimum_stock_level)
         low_stock = (
-            db.query(Medicine.id, Medicine.name, func.sum(Batch.quantity).label("qty"))
+            db.query(Medicine.id, Medicine.name, Medicine.minimum_stock_level, func.sum(Batch.quantity).label("qty"))
             .join(Batch, Medicine.id == Batch.medicine_id)
-            .group_by(Medicine.id, Medicine.name)
-            .having(func.sum(Batch.quantity) < 10)
+            .group_by(Medicine.id, Medicine.name, Medicine.minimum_stock_level)
+            .having(func.sum(Batch.quantity) <= Medicine.minimum_stock_level)
             .all()
         )
 
@@ -135,7 +135,8 @@ class DashboardService:
             {
                 "medicine_id": row.id,
                 "medicine_name": row.name,
-                "quantity": int(row.qty)
+                "quantity": int(row.qty),
+                "minimum_stock_level": row.minimum_stock_level
             }
             for row in low_stock
         ]

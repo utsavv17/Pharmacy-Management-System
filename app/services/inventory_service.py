@@ -32,18 +32,19 @@ class InventoryService:
 
     @staticmethod
     def get_low_stock(db: Session, limit: int = 20):
-        """Medicines with stock below threshold"""
+        """Medicines with stock <= minimum_stock_level"""
         medicines = db.query(Medicine).all()
 
         result = []
 
         for m in medicines:
             total_stock = sum(b.quantity for b in m.batches)
-            if total_stock <= limit:
+            if total_stock <= m.minimum_stock_level:
                 result.append({
                     "medicine_id": m.id,
                     "name": m.name,
-                    "total_stock": total_stock
+                    "total_stock": total_stock,
+                    "minimum_stock_level": m.minimum_stock_level
                 })
 
         return result

@@ -14,6 +14,65 @@ from app.utils.pagination import Paginator
 
 router = APIRouter(prefix="/sales", tags=["Sales"])
 
+@router.get("/")
+def get_sales_history(
+    page: int = 1,
+    limit: int = 10,
+    search: str | None = None,
+    customer_id: int | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    from sqlalchemy import or_
+    from app.models.customer import Customer
+    
+    query = db.query(Sale)
+    
+    if search:
+        query = query.filter(Sale.invoice_number.ilike(f"%{search}%"))
+    if customer_id:
+        query = query.filter(Sale.customer_id == customer_id)
+    if start_date:
+        query = query.filter(Sale.sale_date >= start_date)
+    if end_date:
+        query = query.filter(Sale.sale_date <= end_date)
+    if status:
+        query = query.filter(Sale.status == status)
+        
+    query = query.order_by(Sale.created_at.desc())
+    paginated = Paginator.paginate(query, page, limit)
+    
+    items = []
+    for sale in paginated["items"]:
+        customer = db.query(Customer).filter(Customer.id == sale.customer_id).first() if sale.customer_id else None
+        items.append({
+            "id": sale.id,
+            "invoice_number": sale.invoice_number,
+            "customer_id": sale.customer_id,
+            "customer_name": customer.name if customer else sale.customer_name,
+            "sale_date": sale.sale_date,
+            "subtotal": sale.subtotal,
+            "discount_amount": sale.discount_amount,
+            "points_earned": getattr(sale, 'points_earned', 0),
+            "points_redeemed": getattr(sale, 'points_redeemed', 0),
+            "total_amount": sale.total_amount,
+            "status": getattr(sale, 'status', 'COMPLETED'),
+            "created_at": sale.created_at,
+            "items_count": len(sale.items)
+        })
+        
+    return {
+        "success": True,
+        "message": "Sales fetched",
+        "data": {
+            "items": items,
+            "pagination": paginated["pagination"]
+        }
+    }
+
 
 @router.get("/pos/medicines")
 def get_pos_medicines(

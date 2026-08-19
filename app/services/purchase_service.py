@@ -9,57 +9,70 @@ class PurchaseService:
 
     @staticmethod
     def create_purchase(db: Session, data):
-        # 1) Create parent purchase
-        # create a unique invoice number
-        invoice_number = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        purchase = Purchase(
-            invoice_number=invoice_number,
-            supplier_name=data.supplier_name,
-            purchase_date=data.purchase_date,
-            total_amount=0,
-            created_at=datetime.now()
-        )
-
-        db.add(purchase)
-        db.commit()
-        db.refresh(purchase)
-
-        total_amount = 0
-
-        # 2) Loop through purchase items
-        for item in data.items:
-            purchase_item = PurchaseItem(
-                purchase_id=purchase.id,
-                medicine_id=item.medicine_id,
-                batch_no=item.batch_no,
-                expiry_date=item.expiry_date,
-                purchase_price=item.purchase_price,
-                selling_price=item.selling_price,
-                quantity=item.quantity
-            )
-            db.add(purchase_item)
-            db.commit()
-            db.refresh(purchase_item)
-
-            # Calculate amount (unit cost × quantity)
-            total_amount += item.purchase_price * item.quantity
-
-            # 3) Create batch immediately
-            batch = Batch(
-                batch_no=item.batch_no,
-                expiry_date=item.expiry_date,
-                purchase_price=item.purchase_price,
-                selling_price=item.selling_price,
-                quantity=item.quantity,
-                medicine_id=item.medicine_id
+        try:
+            # 1) Create parent purchase
+            # create a unique invoice number
+            invoice_number = f"PUR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            purchase = Purchase(
+                invoice_number=invoice_number,
+                supplier_name=data.supplier_name,
+                purchase_date=data.purchase_date,
+                total_amount=0,
+                created_at=datetime.now()
             )
 
-            db.add(batch)
+            db.add(purchase)
+            db.flush()  # Populate purchase.id without committing
+
+            total_amount = 0
+
+            # 2) Loop through purchase items
+            for item in data.items:
+                purchase_item = PurchaseItem(
+                    purchase_id=purchase.id,
+                    medicine_id=item.medicine_id,
+                    batch_no=item.batch_no,
+                    expiry_date=item.expiry_date,
+                    purchase_price=item.purchase_price,
+                    selling_price=item.selling_price,
+                    quantity=item.quantity
+                )
+                db.add(purchase_item)
+
+                # Calculate amount (unit cost × quantity)
+                total_amount += item.purchase_price * item.quantity
+
+                # 3) Update or Create batch
+                batch = db.query(Batch).filter(
+                    Batch.medicine_id == item.medicine_id,
+                    Batch.batch_no == item.batch_no
+                ).first()
+
+                if batch:
+                    batch.quantity += item.quantity
+                    # Ensure price updates if required by business logic, but let's keep it simple
+                    batch.purchase_price = item.purchase_price
+                    batch.selling_price = item.selling_price
+                    batch.expiry_date = item.expiry_date
+                else:
+                    batch = Batch(
+                        batch_no=item.batch_no,
+                        expiry_date=item.expiry_date,
+                        purchase_price=item.purchase_price,
+                        selling_price=item.selling_price,
+                        quantity=item.quantity,
+                        medicine_id=item.medicine_id
+                    )
+                    db.add(batch)
+
+            # 4) Update total amount
+            purchase.total_amount = total_amount
+            
+            # Commit the entire transaction atomically
             db.commit()
+            db.refresh(purchase)
 
-        # 4) Update total amount
-        purchase.total_amount = total_amount
-        db.commit()
-        db.refresh(purchase)
-
-        return purchase
+            return purchase
+        except Exception as e:
+            db.rollback()
+            raise e

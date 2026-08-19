@@ -5,9 +5,10 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
-    environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/pharmacy_db
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
     restart: unless-stopped
 
   postgres:
@@ -18,9 +19,23 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: pharmacy_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d pharmacy_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    container_name: pharmacy-frontend
+    ports:
+      - "5174:5173"
+    depends_on:
+      - app
     restart: unless-stopped
 
 volumes:

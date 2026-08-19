@@ -7,8 +7,9 @@ import logging
 from app.core.config import get_settings
 from app.utils.settings import initialize_settings
 from app.db.db import get_db
+import app.db.base # Ensures all models are registered for SQLAlchemy mapper
 
-from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard, supplier, settings
+from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard, supplier, settings, customers, returns
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
@@ -49,6 +50,8 @@ app = FastAPI(
 origins = [
     "http://localhost",
     "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
     "https://develop.d393xravvewyoy.amplifyapp.com",
     "http://54.179.188.174"
 ]
@@ -97,6 +100,8 @@ app.include_router(sales_report.router)
 app.include_router(dashboard.router)
 app.include_router(supplier.router)
 app.include_router(settings.router)
+app.include_router(customers.router)
+app.include_router(returns.router)
 
 @app.get("/", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):
