@@ -41,7 +41,7 @@ class PDFService:
         return "Helvetica"
 
     @staticmethod
-    def generate_sale_invoice(sale, logo_path="/mnt/data/b1bc071f-b9b3-43aa-989a-ef0865e15d86.png"):
+    def generate_sale_invoice(db: Session, sale, org_id: int, logo_path="/mnt/data/b1bc071f-b9b3-43aa-989a-ef0865e15d86.png"):
         """
         Generate a styled invoice PDF Buffer.
 
@@ -109,9 +109,7 @@ class PDFService:
         elements = []
 
         # Get pharmacy settings & DB
-        from app.main import get_db
-        db = next(get_db())
-        settings = db.query(Settings).first()
+        settings = db.query(Settings).filter(Settings.organization_id == org_id).first()
 
         pharmacy_name = settings.pharmacy_name if settings and settings.pharmacy_name else "Your Pharmacy Name"
         address = settings.address if settings and settings.address else "Address here"
@@ -174,7 +172,7 @@ class PDFService:
 
         # rows
         for item in sale.items:
-            med = db.query(Medicine).filter(Medicine.id == item.medicine_id).first()
+            med = db.query(Medicine).filter(Medicine.id == item.medicine_id, Medicine.organization_id == org_id).first()
             name = med.name if med else f"Medicine ID: {item.medicine_id}"
             qty = str(item.quantity)
             price = f"{item.selling_price:.0f} Tk"

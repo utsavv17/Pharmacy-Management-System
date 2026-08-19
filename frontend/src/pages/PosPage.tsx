@@ -56,8 +56,8 @@ export const PosPage = () => {
   const filteredMedicines = useMemo(() => {
     if (!searchTerm) return [];
     return posMedicines?.filter(m => 
-      m.medicine_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      m.batch_number.toLowerCase().includes(searchTerm.toLowerCase())
+      (m.medicine_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+      (m.batch_number?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     ) || [];
   }, [posMedicines, searchTerm]);
   

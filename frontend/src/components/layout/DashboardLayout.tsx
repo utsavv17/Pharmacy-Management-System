@@ -12,10 +12,13 @@ import {
   Receipt,
   Truck,
   PackagePlus,
-  TrendingUp
+  TrendingUp,
+  Building,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
+import { OrganizationSwitcher } from './OrganizationSwitcher';
 
 export const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -33,6 +36,13 @@ export const DashboardLayout = () => {
     { name: 'Reports', href: '/reports', icon: TrendingUp },
   ];
 
+  if (user?.role === 'super_admin') {
+    navigation.push(
+      { name: 'Organizations', href: '/organizations', icon: Building },
+      { name: 'Plans', href: '/plans', icon: CreditCard }
+    );
+  }
+
   return (
     <div className="flex h-screen bg-muted/20">
       {/* Sidebar */}
@@ -40,6 +50,9 @@ export const DashboardLayout = () => {
         <div className="flex items-center h-16 px-4 border-b">
           <Pill className="w-6 h-6 text-primary mr-2" />
           <span className="text-lg font-bold">PharmaSys</span>
+        </div>
+        <div className="px-4 py-3 border-b">
+          <OrganizationSwitcher />
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-2">

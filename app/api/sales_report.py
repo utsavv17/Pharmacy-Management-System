@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import date
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_organization
 from app.main import get_db
 from app.services.sales_report_service import SalesReportService
 from app.services.dashboard_service import DashboardService
@@ -17,9 +17,10 @@ router = APIRouter(prefix="/reports/sales", tags=["Sales Reports"])
 def get_daily_sales(
     day: date = date.today(),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    data = SalesReportService.daily_sales(db, day)
+    data = SalesReportService.daily_sales(db, day, org_id)
 
     return {
         "success": True,
@@ -33,10 +34,11 @@ def get_monthly_sales(
     year: int,
     month: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    data = SalesReportService.monthly_sales(db, year, month)
+    data = SalesReportService.monthly_sales(db, year, month, org_id)
 
     return {
         "success": True,
@@ -49,10 +51,11 @@ def get_monthly_sales(
 def get_sales_by_medicine(
     medicine_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    data, error = SalesReportService.sales_by_medicine(db, medicine_id)
+    data, error = SalesReportService.sales_by_medicine(db, medicine_id, org_id)
 
     if error == "NOT_FOUND":
         return {
@@ -71,9 +74,10 @@ def get_sales_by_medicine(
 @router.get("/sales-7-days")
 def get_last_7_days_sales(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    data = DashboardService.last_7_days_sales(db)
+    data = DashboardService.last_7_days_sales(db, org_id)
     return {
         "success": True,
         "message": "Last 7 days sales fetched",
@@ -88,13 +92,14 @@ def list_sales(
     page: int = 1,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     from sqlalchemy import extract, func
     from app.models.sale_item import SaleItem
     from app.models.batch import Batch
     
-    query = db.query(Sale).filter(extract('year', Sale.sale_date) == year)
+    query = db.query(Sale).filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id)
 
     if search:
         s = f"%{search}%"
@@ -107,12 +112,12 @@ def list_sales(
     paginated = Paginator.paginate(query, page, limit)
     
     # Year totals
-    year_sales_count = db.query(func.count(Sale.id)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
-    year_sale_amount = db.query(func.sum(Sale.total_amount)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
-    year_subtotal = db.query(func.sum(Sale.subtotal)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
-    year_discount = db.query(func.sum(Sale.discount_amount)).filter(extract('year', Sale.sale_date) == year).scalar() or 0
-    year_revenue = DashboardService.calculate_year_revenue(db, year)
-    year_items_sold = db.query(func.sum(SaleItem.quantity)).join(Sale).filter(extract('year', Sale.sale_date) == year).scalar() or 0
+    year_sales_count = db.query(func.count(Sale.id)).filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id).scalar() or 0
+    year_sale_amount = db.query(func.sum(Sale.total_amount)).filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id).scalar() or 0
+    year_subtotal = db.query(func.sum(Sale.subtotal)).filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id).scalar() or 0
+    year_discount = db.query(func.sum(Sale.discount_amount)).filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id).scalar() or 0
+    year_revenue = DashboardService.calculate_year_revenue(db, year, org_id)
+    year_items_sold = db.query(func.sum(SaleItem.quantity)).join(Sale).filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id).scalar() or 0
 
     return {
         "success": True,

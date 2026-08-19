@@ -8,8 +8,8 @@ from app.models.settings import Settings
 
 class LoyaltyService:
     @staticmethod
-    def _get_settings(db: Session) -> Settings:
-        settings = db.query(Settings).first()
+    def _get_settings(db: Session, org_id: int) -> Settings:
+        settings = db.query(Settings).filter(Settings.organization_id == org_id).first()
         if not settings:
             # Fallbacks if settings missing
             settings = Settings(
@@ -21,8 +21,8 @@ class LoyaltyService:
         return settings
 
     @staticmethod
-    def calculate_eligible_points(db: Session, eligible_amount: float) -> int:
-        settings = LoyaltyService._get_settings(db)
+    def calculate_eligible_points(db: Session, eligible_amount: float, org_id: int) -> int:
+        settings = LoyaltyService._get_settings(db, org_id)
         if settings.currency_units_per_point <= 0:
             return 0
         
@@ -30,11 +30,11 @@ class LoyaltyService:
         return math.floor(eligible_amount / settings.currency_units_per_point)
 
     @staticmethod
-    def validate_redemption(db: Session, customer: Customer, points_to_redeem: int, final_total_before_loyalty: float) -> float:
+    def validate_redemption(db: Session, customer: Customer, points_to_redeem: int, final_total_before_loyalty: float, org_id: int) -> float:
         if points_to_redeem <= 0:
             return 0.0
             
-        settings = LoyaltyService._get_settings(db)
+        settings = LoyaltyService._get_settings(db, org_id)
         
         if customer.total_points < points_to_redeem:
             raise HTTPException(status_code=400, detail=f"Insufficient points. Available: {customer.total_points}")
@@ -54,11 +54,11 @@ class LoyaltyService:
         return loyalty_discount
 
     @staticmethod
-    def award_points(db: Session, customer_id: int, points: int, sale_id: int, description: str = "Points earned from purchase"):
+    def award_points(db: Session, customer_id: int, points: int, sale_id: int, org_id: int, description: str = "Points earned from purchase"):
         if points <= 0:
             return
             
-        customer = db.query(Customer).filter(Customer.id == customer_id).with_for_update().first()
+        customer = db.query(Customer).filter(Customer.id == customer_id, Customer.organization_id == org_id).with_for_update().first()
         if not customer:
             raise HTTPException(status_code=404, detail="Customer not found")
             
@@ -70,17 +70,18 @@ class LoyaltyService:
             type="EARN",
             points=points,
             balance_after=customer.total_points,
-            description=description
+            description=description,
+            organization_id=org_id
         )
         db.add(tx)
         # We don't commit here because this should be part of the Sale transaction
 
     @staticmethod
-    def redeem_points(db: Session, customer_id: int, points: int, sale_id: int, description: str = "Points redeemed for purchase"):
+    def redeem_points(db: Session, customer_id: int, points: int, sale_id: int, org_id: int, description: str = "Points redeemed for purchase"):
         if points <= 0:
             return
             
-        customer = db.query(Customer).filter(Customer.id == customer_id).with_for_update().first()
+        customer = db.query(Customer).filter(Customer.id == customer_id, Customer.organization_id == org_id).with_for_update().first()
         if not customer:
             raise HTTPException(status_code=404, detail="Customer not found")
             
@@ -95,12 +96,13 @@ class LoyaltyService:
             type="REDEEM",
             points=-points,
             balance_after=customer.total_points,
-            description=description
+            description=description,
+            organization_id=org_id
         )
         db.add(tx)
 
     @staticmethod
-    def reverse_points(db: Session, customer_id: int, points_to_reverse: int, return_id: int, description: str = "Points reversed due to refund"):
+    def reverse_points(db: Session, customer_id: int, points_to_reverse: int, return_id: int, org_id: int, description: str = "Points reversed due to refund"):
         """
         Reverse points earned from a sale that is now being refunded.
         If the customer has already spent the points, their balance could technically go negative,
@@ -109,7 +111,7 @@ class LoyaltyService:
         if points_to_reverse <= 0:
             return
             
-        customer = db.query(Customer).filter(Customer.id == customer_id).with_for_update().first()
+        customer = db.query(Customer).filter(Customer.id == customer_id, Customer.organization_id == org_id).with_for_update().first()
         if not customer:
             return
             
@@ -127,7 +129,8 @@ class LoyaltyService:
                 type="REFUND_REVERSAL",
                 points=-actual_reversal,
                 balance_after=customer.total_points,
-                description=description
+                description=description,
+                organization_id=org_id
             )
             db.add(tx)
             
@@ -140,6 +143,7 @@ class LoyaltyService:
                 type="MANUAL_ADJUSTMENT",
                 points=-debt,
                 balance_after=customer.total_points,
-                description=f"Forgiven point debt due to refund: {debt} points"
+                description=f"Forgiven point debt due to refund: {debt} points",
+                organization_id=org_id
             )
             db.add(tx_debt)

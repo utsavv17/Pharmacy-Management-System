@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_organization
 from app.main import get_db
 from app.services.sale_service import SaleService
 from app.models.sale import Sale
@@ -24,12 +24,13 @@ def get_sales_history(
     end_date: str | None = None,
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     from sqlalchemy import or_
     from app.models.customer import Customer
     
-    query = db.query(Sale)
+    query = db.query(Sale).filter(Sale.organization_id == org_id)
     
     if search:
         query = query.filter(Sale.invoice_number.ilike(f"%{search}%"))
@@ -47,7 +48,7 @@ def get_sales_history(
     
     items = []
     for sale in paginated["items"]:
-        customer = db.query(Customer).filter(Customer.id == sale.customer_id).first() if sale.customer_id else None
+        customer = db.query(Customer).filter(Customer.id == sale.customer_id, Customer.organization_id == org_id).first() if sale.customer_id else None
         items.append({
             "id": sale.id,
             "invoice_number": sale.invoice_number,
@@ -80,63 +81,47 @@ def get_pos_medicines(
     page: int = 1,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     """
     Get all medicines with available stock for POS system
     """
-    from sqlalchemy import func
-    
     query = (
         db.query(
-            Medicine.id,
-            Medicine.name,
-            Medicine.generic_name,
-            Medicine.brand,
-            Medicine.category,
-            Medicine.strength,
-            Medicine.barcode,
-            func.min(Batch.expiry_date).label("expiry_date"),
-            func.min(Batch.selling_price).label("price"),
-            func.sum(Batch.quantity).label("total_quantity")
+            Medicine.id.label("medicine_id"),
+            Medicine.name.label("medicine_name"),
+            Batch.id.label("batch_id"),
+            Batch.batch_no.label("batch_number"),
+            Batch.quantity.label("stock"),
+            Batch.selling_price,
+            Batch.expiry_date
         )
         .join(Batch, Medicine.id == Batch.medicine_id)
-        .filter(Batch.quantity > 0)
-        .group_by(
-            Medicine.id,
-            Medicine.name,
-            Medicine.generic_name,
-            Medicine.brand,
-            Medicine.category,
-            Medicine.strength,
-            Medicine.barcode
-        )
-        .having(func.sum(Batch.quantity) > 0)
+        .filter(Batch.quantity > 0, Medicine.organization_id == org_id)
     )
     
     if search:
         s = f"%{search}%"
         query = query.filter(
             (Medicine.name.ilike(s)) |
-            (Medicine.generic_name.ilike(s))
+            (Medicine.generic_name.ilike(s)) |
+            (Batch.batch_no.ilike(s))
         )
     
-    query = query.order_by(Medicine.name)
+    query = query.order_by(Medicine.name, Batch.expiry_date)
     
     paginated = Paginator.paginate(query, page, limit)
     
     medicines_list = [
         {
-            "id": m.id,
-            "name": m.name,
-            "generic_name": m.generic_name,
-            "brand": m.brand,
-            "category": m.category,
-            "strength": m.strength,
-            "price": float(m.price),
-            "expiry_date": str(m.expiry_date),
-            "barcode": m.barcode,
-            "quantity": int(m.total_quantity)
+            "medicine_id": m.medicine_id,
+            "medicine_name": m.medicine_name,
+            "batch_id": m.batch_id,
+            "batch_number": m.batch_number,
+            "stock": int(m.stock),
+            "selling_price": float(m.selling_price),
+            "expiry_date": str(m.expiry_date)
         }
         for m in paginated["items"]
     ]

@@ -13,6 +13,8 @@ class Batch(Base):
     quantity = Column(Integer, nullable=False, default=0)
 
     medicine_id = Column(Integer, ForeignKey("medicines.id"), nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     # relationship
     medicine = relationship("Medicine", back_populates="batches")
+    organization = relationship("Organization")

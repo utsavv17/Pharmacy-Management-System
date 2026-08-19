@@ -90,9 +90,9 @@ export const InventoryPage = () => {
   if (searchTerm) {
     const s = searchTerm.toLowerCase();
     filteredList = filteredList.filter(i => 
-      i.medicine_name.toLowerCase().includes(s) ||
+      (i.medicine_name?.toLowerCase() || '').includes(s) ||
       (i.generic_name && i.generic_name.toLowerCase().includes(s)) ||
-      i.batch_number.toLowerCase().includes(s)
+      (i.batch_number?.toLowerCase() || '').includes(s)
     );
   }
 

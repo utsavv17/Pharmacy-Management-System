@@ -8,7 +8,7 @@ from app.models.batch import Batch
 class PurchaseService:
 
     @staticmethod
-    def create_purchase(db: Session, data):
+    def create_purchase(db: Session, data, org_id: int):
         try:
             # 1) Create parent purchase
             # create a unique invoice number
@@ -18,7 +18,8 @@ class PurchaseService:
                 supplier_name=data.supplier_name,
                 purchase_date=data.purchase_date,
                 total_amount=0,
-                created_at=datetime.now()
+                created_at=datetime.now(),
+                organization_id=org_id
             )
 
             db.add(purchase)
@@ -35,7 +36,8 @@ class PurchaseService:
                     expiry_date=item.expiry_date,
                     purchase_price=item.purchase_price,
                     selling_price=item.selling_price,
-                    quantity=item.quantity
+                    quantity=item.quantity,
+                    organization_id=org_id
                 )
                 db.add(purchase_item)
 
@@ -45,7 +47,8 @@ class PurchaseService:
                 # 3) Update or Create batch
                 batch = db.query(Batch).filter(
                     Batch.medicine_id == item.medicine_id,
-                    Batch.batch_no == item.batch_no
+                    Batch.batch_no == item.batch_no,
+                    Batch.organization_id == org_id
                 ).first()
 
                 if batch:
@@ -61,7 +64,8 @@ class PurchaseService:
                         purchase_price=item.purchase_price,
                         selling_price=item.selling_price,
                         quantity=item.quantity,
-                        medicine_id=item.medicine_id
+                        medicine_id=item.medicine_id,
+                        organization_id=org_id
                     )
                     db.add(batch)
 

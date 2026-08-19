@@ -63,7 +63,7 @@ export const PurchasesPage = () => {
   const [items, setItems] = useState<Partial<PurchaseItem>[]>([]);
 
   const filteredPurchases = purchases?.filter(p => 
-    p.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (p.invoice_number?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
     (p.supplier_name && p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 

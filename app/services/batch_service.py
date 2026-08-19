@@ -4,24 +4,24 @@ from app.models.batch import Batch
 class BatchService:
 
     @staticmethod
-    def create(db: Session, data):
-        batch = Batch(**data.dict())
+    def create(db: Session, data, org_id: int):
+        batch = Batch(**data.dict(), organization_id=org_id)
         db.add(batch)
         db.commit()
         db.refresh(batch)
         return batch, None
 
     @staticmethod
-    def get_by_id(db: Session, batch_id: int):
-        return db.query(Batch).filter(Batch.id == batch_id).first()
+    def get_by_id(db: Session, batch_id: int, org_id: int):
+        return db.query(Batch).filter(Batch.id == batch_id, Batch.organization_id == org_id).first()
 
     @staticmethod
-    def get_by_medicine(db: Session, medicine_id: int):
-        return db.query(Batch).filter(Batch.medicine_id == medicine_id).order_by(Batch.expiry_date).all()
+    def get_by_medicine(db: Session, medicine_id: int, org_id: int):
+        return db.query(Batch).filter(Batch.medicine_id == medicine_id, Batch.organization_id == org_id).order_by(Batch.expiry_date).all()
 
     @staticmethod
-    def update(db: Session, batch_id: int, data):
-        batch = db.query(Batch).filter(Batch.id == batch_id).first()
+    def update(db: Session, batch_id: int, data, org_id: int):
+        batch = db.query(Batch).filter(Batch.id == batch_id, Batch.organization_id == org_id).first()
         if not batch:
             return None, "NOT_FOUND"
 
@@ -33,8 +33,8 @@ class BatchService:
         return batch, None
 
     @staticmethod
-    def delete(db: Session, batch_id: int):
-        batch = db.query(Batch).filter(Batch.id == batch_id).first()
+    def delete(db: Session, batch_id: int, org_id: int):
+        batch = db.query(Batch).filter(Batch.id == batch_id, Batch.organization_id == org_id).first()
         if not batch:
             return "NOT_FOUND"
 

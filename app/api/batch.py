@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.schemas.batch import BatchCreateSchema, BatchUpdateSchema
 from app.services.batch_service import BatchService
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_organization
 from app.main import get_db
 from app.utils.pagination import Paginator
 from app.models.batch import Batch
@@ -17,10 +17,11 @@ router = APIRouter(prefix="/batches", tags=["Batches"])
 def create_batch(
     payload: BatchCreateSchema,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    batch, error = BatchService.create(db, payload)
+    batch, error = BatchService.create(db, payload, org_id)
 
     return {
         "success": True,
@@ -43,10 +44,11 @@ def list_batches(
     page: int = 1,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    query = db.query(Batch).join(Medicine)
+    query = db.query(Batch).join(Medicine).filter(Batch.organization_id == org_id)
 
     if search:
         s = f"%{search}%"
@@ -82,10 +84,11 @@ def list_batches(
 def list_batches(
     medicine_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    batches = BatchService.get_by_medicine(db, medicine_id)
+    batches = BatchService.get_by_medicine(db, medicine_id, org_id)
 
     return {
         "success": True,
@@ -110,10 +113,11 @@ def update_batch(
     batch_id: int,
     payload: BatchUpdateSchema,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    batch, error = BatchService.update(db, batch_id, payload)
+    batch, error = BatchService.update(db, batch_id, payload, org_id)
 
     if error == "NOT_FOUND":
         return {
@@ -141,7 +145,8 @@ def update_batch(
 def delete_batch(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
     if current_user.role != "admin":
@@ -151,7 +156,7 @@ def delete_batch(
             "error": "FORBIDDEN"
         }
 
-    error = BatchService.delete(db, batch_id)
+    error = BatchService.delete(db, batch_id, org_id)
 
     if error == "NOT_FOUND":
         return {

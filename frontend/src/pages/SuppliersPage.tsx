@@ -74,7 +74,7 @@ export const SuppliersPage = () => {
   });
 
   const filteredSuppliers = suppliers?.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (s.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
     (s.company_name && s.company_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 

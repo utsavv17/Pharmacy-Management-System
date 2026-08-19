@@ -5,7 +5,7 @@ from app.models.purchase import Purchase
 from app.schemas.purchase import PurchaseCreate, PurchaseResponse
 from typing import List
 from app.services.purchase_service import PurchaseService
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_organization
 from app.main import get_db
 from app.utils.pagination import Paginator
 from app.models.purchase import Purchase
@@ -17,11 +17,12 @@ router = APIRouter(prefix="/purchases", tags=["Purchases"])
 def create_purchase(
     payload: PurchaseCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
     # Create purchase + items + batches
-    purchase = PurchaseService.create_purchase(db, payload)
+    purchase = PurchaseService.create_purchase(db, payload, org_id)
 
     # Format response
     return {
@@ -53,14 +54,15 @@ def create_purchase(
 def create_multiple_purchases(
     purchases: List[PurchaseCreate],
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     created_purchases = []
     errors = []
     
     for i, purchase_data in enumerate(purchases):
         try:
-            purchase = PurchaseService.create_purchase(db, purchase_data)
+            purchase = PurchaseService.create_purchase(db, purchase_data, org_id)
             created_purchases.append({
                 "id": purchase.id,
                 "invoice_number": purchase.invoice_number,
@@ -96,10 +98,11 @@ def list_purchases(
     page: int = 1,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    query = db.query(Purchase)
+    query = db.query(Purchase).filter(Purchase.organization_id == org_id)
 
     if search:
         s = f"%{search}%"
@@ -136,9 +139,10 @@ def list_purchases(
 def get_purchase(
     purchase_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
+    purchase = db.query(Purchase).filter(Purchase.id == purchase_id, Purchase.organization_id == org_id).first()
 
     if not purchase:
         return {

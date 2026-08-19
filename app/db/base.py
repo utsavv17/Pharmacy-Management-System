@@ -14,3 +14,5 @@ from app.models.token import RefreshToken, BlockedToken
 from app.models.customer import Customer
 from app.models.reward_transaction import RewardTransaction
 from app.models.sale_return import SaleReturn, SaleReturnItem
+from app.models.organization import Organization
+from app.models.plan import Plan

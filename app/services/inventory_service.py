@@ -7,10 +7,11 @@ from app.models.medicine import Medicine
 class InventoryService:
 
     @staticmethod
-    def get_medicine_stock(db: Session, medicine_id: int):
+    def get_medicine_stock(db: Session, medicine_id: int, org_id: int):
         """Total available stock for a medicine (sum of all batches)"""
         batches = db.query(Batch).filter(
             Batch.medicine_id == medicine_id,
+            Batch.organization_id == org_id,
             Batch.quantity > 0
         ).all()
 
@@ -31,9 +32,9 @@ class InventoryService:
         }
 
     @staticmethod
-    def get_low_stock(db: Session, limit: int = 20):
+    def get_low_stock(db: Session, org_id: int, limit: int = 20):
         """Medicines with stock <= minimum_stock_level"""
-        medicines = db.query(Medicine).all()
+        medicines = db.query(Medicine).filter(Medicine.organization_id == org_id).all()
 
         result = []
 
@@ -50,11 +51,12 @@ class InventoryService:
         return result
 
     @staticmethod
-    def get_near_expiry(db: Session, days: int = 30):
+    def get_near_expiry(db: Session, org_id: int, days: int = 30):
         """Batches expiring within X days"""
         today = date.today()
 
         batches = db.query(Batch).filter(
+            Batch.organization_id == org_id,
             Batch.expiry_date <= today.replace(day=today.day) +  # safe month edges
             (date.fromordinal(today.toordinal() + days) - today)  # offset
         ).all()
@@ -71,11 +73,12 @@ class InventoryService:
         ]
 
     @staticmethod
-    def get_expired(db: Session):
+    def get_expired(db: Session, org_id: int):
         """Batches already expired"""
         today = date.today()
 
         batches = db.query(Batch).filter(
+            Batch.organization_id == org_id,
             Batch.expiry_date < today
         ).all()
 

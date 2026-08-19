@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
@@ -15,5 +15,7 @@ class Medicine(Base):
     barcode = Column(String, nullable=True)
     image_url = Column(String, nullable=True)
     minimum_stock_level = Column(Integer, default=20, nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     
     batches = relationship("Batch", back_populates="medicine", cascade="all, delete")
+    organization = relationship("Organization")

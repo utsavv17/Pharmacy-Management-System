@@ -14,7 +14,7 @@ class DashboardService:
 
     # 1. Today Summary
     @staticmethod
-    def today_summary(db: Session):
+    def today_summary(db: Session, org_id: int):
         today = date.today()
 
         # Today's Revenue (quantity * selling_price - purchase_price - discount_amount)
@@ -28,14 +28,14 @@ class DashboardService:
             .select_from(SaleItem)
             .join(Sale, SaleItem.sale_id == Sale.id)
             .join(Batch, SaleItem.batch_id == Batch.id)
-            .filter(Sale.sale_date == today)
+            .filter(Sale.sale_date == today, Sale.organization_id == org_id)
             .scalar()
         ) or 0
         
         # Calculate total discount for today
         today_discount = (
             db.query(func.sum(Sale.discount_amount))
-            .filter(Sale.sale_date == today)
+            .filter(Sale.sale_date == today, Sale.organization_id == org_id)
             .scalar()
         ) or 0
         
@@ -44,14 +44,14 @@ class DashboardService:
         # Today's Purchases Amount
         total_purchases = (
             db.query(func.sum(Purchase.total_amount))
-            .filter(Purchase.purchase_date == today)
+            .filter(Purchase.purchase_date == today, Purchase.organization_id == org_id)
             .scalar()
         ) or 0
 
         # Total Invoices Today
         total_invoices = (
             db.query(func.count(Sale.id))
-            .filter(Sale.sale_date == today)
+            .filter(Sale.sale_date == today, Sale.organization_id == org_id)
             .scalar()
         ) or 0
 
@@ -59,7 +59,7 @@ class DashboardService:
         total_items_sold = (
             db.query(func.sum(SaleItem.quantity))
             .join(Sale)
-            .filter(Sale.sale_date == today)
+            .filter(Sale.sale_date == today, Sale.organization_id == org_id)
             .scalar()
         ) or 0
 
@@ -74,26 +74,26 @@ class DashboardService:
 
     # Grand Total Summary (All Time)
     @staticmethod
-    def grand_total_summary(db: Session):
+    def grand_total_summary(db: Session, org_id: int):
         # Total medicines with stock (quantity > 0)
         total_medicines = (
             db.query(func.count(func.distinct(Medicine.id)))
             .join(Batch, Medicine.id == Batch.medicine_id)
-            .filter(Batch.quantity > 0)
+            .filter(Batch.quantity > 0, Medicine.organization_id == org_id)
             .scalar()
         ) or 0
         
         # Total suppliers
-        total_suppliers = db.query(func.count(Supplier.id)).scalar() or 0
+        total_suppliers = db.query(func.count(Supplier.id)).filter(Supplier.organization_id == org_id).scalar() or 0
         
         # Total sales count (all time)
-        total_sales_count = db.query(func.count(Sale.id)).scalar() or 0
+        total_sales_count = db.query(func.count(Sale.id)).filter(Sale.organization_id == org_id).scalar() or 0
         
         # Total items sold (all time)
-        total_items_sold = db.query(func.sum(SaleItem.quantity)).scalar() or 0
+        total_items_sold = db.query(func.sum(SaleItem.quantity)).join(Sale).filter(Sale.organization_id == org_id).scalar() or 0
         
         # Total discount amount (all time)
-        total_discount = db.query(func.sum(Sale.discount_amount)).scalar() or 0.0
+        total_discount = db.query(func.sum(Sale.discount_amount)).filter(Sale.organization_id == org_id).scalar() or 0.0
         
         # Total revenue (all time) - proper calculation with discount
         total_revenue = (
@@ -121,11 +121,12 @@ class DashboardService:
 
     # 2. Inventory Summary
     @staticmethod
-    def inventory_summary(db: Session):
+    def inventory_summary(db: Session, org_id: int):
         # Low stock (<= minimum_stock_level)
         low_stock = (
             db.query(Medicine.id, Medicine.name, Medicine.minimum_stock_level, func.sum(Batch.quantity).label("qty"))
             .join(Batch, Medicine.id == Batch.medicine_id)
+            .filter(Medicine.organization_id == org_id)
             .group_by(Medicine.id, Medicine.name, Medicine.minimum_stock_level)
             .having(func.sum(Batch.quantity) <= Medicine.minimum_stock_level)
             .all()
@@ -149,7 +150,8 @@ class DashboardService:
             db.query(Batch)
             .filter(Batch.expiry_date >= today,
                     Batch.expiry_date <= next_30,
-                    Batch.quantity > 0)
+                    Batch.quantity > 0,
+                    Batch.organization_id == org_id)
             .all()
         )
 
@@ -167,6 +169,7 @@ class DashboardService:
         # Total stock value (purchase price * qty)
         stock_value = (
             db.query(func.sum(Batch.purchase_price * Batch.quantity))
+            .filter(Batch.organization_id == org_id)
             .scalar()
         ) or 0
 
@@ -178,7 +181,7 @@ class DashboardService:
 
     # Year Revenue Calculation (Reusable)
     @staticmethod
-    def calculate_year_revenue(db: Session, year: int):
+    def calculate_year_revenue(db: Session, year: int, org_id: int):
         from sqlalchemy import extract
         
         # Calculate gross profit
@@ -191,14 +194,14 @@ class DashboardService:
             .select_from(SaleItem)
             .join(Sale, SaleItem.sale_id == Sale.id)
             .join(Batch, SaleItem.batch_id == Batch.id)
-            .filter(extract('year', Sale.sale_date) == year)
+            .filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id)
             .scalar()
         ) or 0
         
         # Calculate total discount for the year
         year_discount = (
             db.query(func.sum(Sale.discount_amount))
-            .filter(extract('year', Sale.sale_date) == year)
+            .filter(extract('year', Sale.sale_date) == year, Sale.organization_id == org_id)
             .scalar()
         ) or 0
         
@@ -206,7 +209,7 @@ class DashboardService:
 
     # 3. Sales Chart (Last 7 Days)
     @staticmethod
-    def last_7_days_sales(db: Session):
+    def last_7_days_sales(db: Session, org_id: int):
         today = date.today()
         last_week = today - timedelta(days=6)
 
@@ -215,7 +218,7 @@ class DashboardService:
                 Sale.sale_date,
                 func.sum(Sale.total_amount).label("amount")
             )
-            .filter(Sale.sale_date >= last_week)
+            .filter(Sale.sale_date >= last_week, Sale.organization_id == org_id)
             .group_by(Sale.sale_date)
             .order_by(Sale.sale_date)
             .all()

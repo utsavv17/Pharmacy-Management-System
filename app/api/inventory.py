@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.services.inventory_service import InventoryService
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_organization
 from app.main import get_db
 from app.utils.pagination import Paginator
 from app.models.medicine import Medicine
@@ -14,15 +14,18 @@ router = APIRouter(prefix="/inventory", tags=["Inventory"])
 @router.get("/alerts")
 def get_inventory_alerts(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    low_stock = InventoryService.get_low_stock(db, 100)
-    near_expiry = InventoryService.get_near_expiry(db, 30)
-    expired = InventoryService.get_expired(db)
+    low_stock = InventoryService.get_low_stock(db, org_id, 100)
+    near_expiry = InventoryService.get_near_expiry(db, org_id, 30)
+    expired = InventoryService.get_expired(db, org_id)
     
     out_of_stock = db.query(
         Medicine.id, Medicine.name, Medicine.generic_name
-    ).outerjoin(Batch, Medicine.id == Batch.medicine_id).group_by(
+    ).outerjoin(Batch, Medicine.id == Batch.medicine_id).filter(
+        Medicine.organization_id == org_id
+    ).group_by(
         Medicine.id, Medicine.name, Medicine.generic_name
     ).having(func.coalesce(func.sum(Batch.quantity), 0) == 0).all()
     
@@ -45,7 +48,8 @@ def inventory_list(
     page: int = 1,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     query = (
         db.query(
@@ -61,6 +65,7 @@ def inventory_list(
             Medicine.minimum_stock_level.label("minimum_stock_level")
         )
         .join(Batch, Medicine.id == Batch.medicine_id)
+        .filter(Medicine.organization_id == org_id)
     )
 
     if search:
@@ -102,7 +107,8 @@ def inventory_list(
 def get_stock_movement(
     batch_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     from app.models.purchase_item import PurchaseItem
     from app.models.purchase import Purchase
@@ -113,8 +119,9 @@ def get_stock_movement(
     purchases = (
         db.query(PurchaseItem, Purchase)
         .join(Purchase)
-        .filter(PurchaseItem.batch_no == db.query(Batch.batch_no).filter(Batch.id == batch_id).scalar())
-        .filter(PurchaseItem.medicine_id == db.query(Batch.medicine_id).filter(Batch.id == batch_id).scalar())
+        .filter(PurchaseItem.batch_no == db.query(Batch.batch_no).filter(Batch.id == batch_id, Batch.organization_id == org_id).scalar())
+        .filter(PurchaseItem.medicine_id == db.query(Batch.medicine_id).filter(Batch.id == batch_id, Batch.organization_id == org_id).scalar())
+        .filter(Purchase.organization_id == org_id)
         .all()
     )
 
@@ -123,6 +130,7 @@ def get_stock_movement(
         db.query(SaleItem, Sale)
         .join(Sale)
         .filter(SaleItem.batch_id == batch_id)
+        .filter(Sale.organization_id == org_id)
         .all()
     )
 

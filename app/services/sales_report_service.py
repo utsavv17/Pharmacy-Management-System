@@ -9,11 +9,11 @@ from app.models.medicine import Medicine
 class SalesReportService:
 
     @staticmethod
-    def daily_sales(db: Session, target_date: date):
+    def daily_sales(db: Session, target_date: date, org_id: int):
         # total sale amount
         total_amount = (
             db.query(func.sum(Sale.total_amount))
-            .filter(Sale.sale_date == target_date)
+            .filter(Sale.sale_date == target_date, Sale.organization_id == org_id)
             .scalar()
         ) or 0
 
@@ -21,7 +21,7 @@ class SalesReportService:
         total_items = (
             db.query(func.sum(SaleItem.quantity))
             .join(Sale)
-            .filter(Sale.sale_date == target_date)
+            .filter(Sale.sale_date == target_date, Sale.organization_id == org_id)
             .scalar()
         ) or 0
 
@@ -32,7 +32,7 @@ class SalesReportService:
         }
 
     @staticmethod
-    def monthly_sales(db: Session, year: int, month: int):
+    def monthly_sales(db: Session, year: int, month: int, org_id: int):
         # first and last date of month
         first_day = date(year, month, 1)
         last_day = date(year, month, 28)
@@ -45,7 +45,7 @@ class SalesReportService:
         # total sale amount in month
         total_amount = (
             db.query(func.sum(Sale.total_amount))
-            .filter(Sale.sale_date >= first_day, Sale.sale_date < last_day)
+            .filter(Sale.sale_date >= first_day, Sale.sale_date < last_day, Sale.organization_id == org_id)
             .scalar()
         ) or 0
 
@@ -55,7 +55,7 @@ class SalesReportService:
                 Sale.sale_date,
                 func.sum(Sale.total_amount).label("day_total")
             )
-            .filter(Sale.sale_date >= first_day, Sale.sale_date < last_day)
+            .filter(Sale.sale_date >= first_day, Sale.sale_date < last_day, Sale.organization_id == org_id)
             .group_by(Sale.sale_date)
             .order_by(Sale.sale_date)
             .all()
@@ -77,23 +77,23 @@ class SalesReportService:
         }
 
     @staticmethod
-    def sales_by_medicine(db: Session, medicine_id: int):
+    def sales_by_medicine(db: Session, medicine_id: int, org_id: int):
         # get medicine info
-        medicine = db.query(Medicine).filter(Medicine.id == medicine_id).first()
+        medicine = db.query(Medicine).filter(Medicine.id == medicine_id, Medicine.organization_id == org_id).first()
         if not medicine:
             return None, "NOT_FOUND"
 
         # total quantity sold for this medicine
         total_quantity = (
             db.query(func.sum(SaleItem.quantity))
-            .filter(SaleItem.medicine_id == medicine_id)
+            .filter(SaleItem.medicine_id == medicine_id, SaleItem.organization_id == org_id)
             .scalar()
         ) or 0
 
         # total revenue
         total_revenue = (
             db.query(func.sum(SaleItem.quantity * SaleItem.selling_price))
-            .filter(SaleItem.medicine_id == medicine_id)
+            .filter(SaleItem.medicine_id == medicine_id, SaleItem.organization_id == org_id)
             .scalar()
         ) or 0
 

@@ -6,11 +6,13 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Receipt, Search, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Receipt, Search, RotateCcw, AlertTriangle, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 export const SalesHistoryPage = () => {
   const [search, setSearch] = useState('');
+  const { toast } = useToast();
 
   const { data: salesData, isLoading } = useQuery({
     queryKey: ['sales_history', search],
@@ -19,6 +21,23 @@ export const SalesHistoryPage = () => {
       return data;
     },
   });
+
+  const handleDownloadInvoice = async (saleId: number, invoiceNum: string) => {
+    try {
+      const response = await apiClient.get(`/invoice/sale/${saleId}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${invoiceNum}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to download invoice.', variant: 'destructive' });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -91,7 +110,10 @@ export const SalesHistoryPage = () => {
                   <TableCell>{sale.customer_name || 'Walk-in Customer'}</TableCell>
                   <TableCell>{getStatusBadge(sale.status)}</TableCell>
                   <TableCell className="text-right font-bold">₹{sale.total_amount.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right flex items-center justify-end space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(sale.id, sale.invoice_number)}>
+                      <Download className="w-4 h-4 mr-2" /> Invoice
+                    </Button>
                     <Button variant="outline" size="sm" disabled={sale.status === 'FULLY_RETURNED'}>
                       <RotateCcw className="w-4 h-4 mr-2" /> Refund
                     </Button>

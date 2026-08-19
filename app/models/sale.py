@@ -23,9 +23,11 @@ class Sale(Base):
     status = Column(String, nullable=False, default="COMPLETED")
     
     created_at = Column(DateTime, nullable=False, server_default=func.now())
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     # Relationships
+    items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
     customer = relationship("Customer", back_populates="sales")
-    items = relationship("SaleItem", back_populates="sale", cascade="all, delete")
-    reward_transactions = relationship("RewardTransaction", back_populates="sale")
-    returns = relationship("SaleReturn", back_populates="sale")
+    returns = relationship("SaleReturn", back_populates="sale", cascade="all, delete-orphan")
+    reward_transactions = relationship("RewardTransaction", back_populates="sale", cascade="all, delete-orphan")
+    organization = relationship("Organization")

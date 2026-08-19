@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.schemas.medicine import MedicineCreateSchema, MedicineUpdateSchema
 from typing import List
 from app.services.medicine_service import MedicineService
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_organization
 from app.main import get_db
 from app.utils.pagination import Paginator
 from app.models.medicine import Medicine
@@ -20,10 +20,11 @@ router = APIRouter(prefix="/medicines", tags=["Medicines"])
 def create_medicine(
     payload: MedicineCreateSchema,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    med, error = MedicineService.create(db, payload)
+    med, error = MedicineService.create(db, payload, org_id)
 
     if error == "MEDICINE_EXISTS":
         return {
@@ -54,13 +55,14 @@ def create_medicine(
 def bulk_create_medicines(
     medicines: List[MedicineCreateSchema],
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     created_medicines = []
     errors = []
     
     for i, medicine_data in enumerate(medicines):
-        med, error = MedicineService.create(db, medicine_data)
+        med, error = MedicineService.create(db, medicine_data, org_id)
         
         if error:
             errors.append({
@@ -101,9 +103,10 @@ def bulk_create_medicines(
 def get_medicine_detail(
     medicine_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    medicine = db.query(Medicine).filter(Medicine.id == medicine_id).first()
+    medicine = db.query(Medicine).filter(Medicine.id == medicine_id, Medicine.organization_id == org_id).first()
     
     if not medicine:
         return {
@@ -135,7 +138,8 @@ def list_medicines(
     page: int = 1,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     # Subquery to get latest batch for each medicine
     latest_batch = db.query(
@@ -147,7 +151,7 @@ def list_medicines(
         latest_batch, Medicine.id == latest_batch.c.medicine_id
     ).outerjoin(
         Batch, (Batch.medicine_id == Medicine.id) & (Batch.expiry_date == latest_batch.c.latest_expiry)
-    )
+    ).filter(Medicine.organization_id == org_id)
 
     if search:
         s = f"%{search}%"
@@ -188,10 +192,11 @@ def update_medicine(
     medicine_id: int,
     payload: MedicineUpdateSchema,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
-    med, error = MedicineService.update(db, medicine_id, payload)
+    med, error = MedicineService.update(db, medicine_id, payload, org_id)
 
     if error == "NOT_FOUND":
         return {
@@ -222,7 +227,8 @@ def update_medicine(
 def delete_medicine(
     medicine_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
 
     # Optional: only admins can delete
@@ -233,7 +239,7 @@ def delete_medicine(
             "error": "FORBIDDEN"
         }
 
-    error = MedicineService.delete(db, medicine_id)
+    error = MedicineService.delete(db, medicine_id, org_id)
 
     if error == "NOT_FOUND":
         return {

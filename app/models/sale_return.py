@@ -15,6 +15,7 @@ class SaleReturn(Base):
     status = Column(String, nullable=False, default="COMPLETED")
     processed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     # Relationships
     sale = relationship("Sale", back_populates="returns")
@@ -22,6 +23,7 @@ class SaleReturn(Base):
     processor = relationship("User")
     items = relationship("SaleReturnItem", back_populates="sale_return", cascade="all, delete-orphan")
     reward_transactions = relationship("RewardTransaction", back_populates="sale_return")
+    organization = relationship("Organization")
 
 
 class SaleReturnItem(Base):
@@ -34,8 +36,10 @@ class SaleReturnItem(Base):
     
     quantity = Column(Integer, nullable=False)
     refund_amount = Column(Float, nullable=False, default=0.0)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     # Relationships
     sale_return = relationship("SaleReturn", back_populates="items")
     sale_item = relationship("SaleItem")
     batch = relationship("Batch")
+    organization = relationship("Organization")

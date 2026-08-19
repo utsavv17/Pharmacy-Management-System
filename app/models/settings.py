@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, Float
+from sqlalchemy import Column, Integer, String, Text, Float, ForeignKey
+from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
 
@@ -17,3 +18,6 @@ class Settings(Base):
     minimum_redemption_points = Column(Integer, nullable=False, default=100)
     point_value = Column(Float, nullable=False, default=0.1) # e.g. 1 point = Rs 0.1 discount
     maximum_points_per_sale = Column(Integer, nullable=False, default=1000)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+
+    organization = relationship("Organization")

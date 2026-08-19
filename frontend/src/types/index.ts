@@ -3,6 +3,7 @@ export interface User {
   email: string;
   full_name: string;
   role: string;
+  organization_id?: number;
 }
 
 export interface Medicine {

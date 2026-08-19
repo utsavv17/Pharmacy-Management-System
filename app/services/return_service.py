@@ -12,9 +12,9 @@ from app.services.loyalty_service import LoyaltyService
 
 class ReturnService:
     @staticmethod
-    def process_return(db: Session, return_in: SaleReturnCreate, current_user_id: int) -> SaleReturn:
+    def process_return(db: Session, return_in: SaleReturnCreate, current_user_id: int, org_id: int) -> SaleReturn:
         # Get the sale
-        sale = db.query(Sale).filter(Sale.id == return_in.sale_id).with_for_update().first()
+        sale = db.query(Sale).filter(Sale.id == return_in.sale_id, Sale.organization_id == org_id).with_for_update().first()
         if not sale:
             raise HTTPException(status_code=404, detail="Sale not found")
             
@@ -35,7 +35,8 @@ class ReturnService:
             reason=return_in.reason,
             status="COMPLETED",
             processed_by=current_user_id,
-            refund_amount=0.0 # Will be updated
+            refund_amount=0.0, # Will be updated
+            organization_id=org_id
         )
         db.add(new_return)
         db.flush() # get new_return.id
@@ -90,7 +91,8 @@ class ReturnService:
                 sale_item_id=sale_item.id,
                 batch_id=batch.id,
                 quantity=item_in.quantity,
-                refund_amount=item_refund
+                refund_amount=item_refund,
+                organization_id=org_id
             )
             db.add(return_item)
 
@@ -107,7 +109,8 @@ class ReturnService:
                 db=db,
                 customer_id=sale.customer_id,
                 points_to_reverse=points_to_reverse,
-                return_id=new_return.id
+                return_id=new_return.id,
+                org_id=org_id
             )
 
         db.commit()

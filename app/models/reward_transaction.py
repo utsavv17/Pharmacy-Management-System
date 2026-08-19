@@ -17,8 +17,10 @@ class RewardTransaction(Base):
     balance_after = Column(Integer, nullable=False)
     description = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     # Relationships
     customer = relationship("Customer", back_populates="reward_transactions")
     sale = relationship("Sale", back_populates="reward_transactions")
     sale_return = relationship("SaleReturn", back_populates="reward_transactions")
+    organization = relationship("Organization")

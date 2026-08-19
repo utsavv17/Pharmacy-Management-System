@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, func, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
@@ -19,8 +19,10 @@ class Customer(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     # Relationships
     sales = relationship("Sale", back_populates="customer")
     reward_transactions = relationship("RewardTransaction", back_populates="customer", cascade="all, delete-orphan")
     returns = relationship("SaleReturn", back_populates="customer")
+    organization = relationship("Organization")

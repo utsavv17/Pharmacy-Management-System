@@ -13,5 +13,7 @@ class SaleItem(Base):
 
     quantity = Column(Integer, nullable=False)
     selling_price = Column(Float, nullable=False)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     sale = relationship("Sale", back_populates="items")
+    organization = relationship("Organization")

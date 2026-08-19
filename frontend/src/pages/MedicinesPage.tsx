@@ -40,7 +40,7 @@ export const MedicinesPage = () => {
   });
 
   const filteredMedicines = medicines?.filter(m => 
-    m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (m.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
     (m.generic_name && m.generic_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 

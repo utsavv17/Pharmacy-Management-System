@@ -9,7 +9,7 @@ from app.utils.settings import initialize_settings
 from app.db.db import get_db
 import app.db.base # Ensures all models are registered for SQLAlchemy mapper
 
-from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard, supplier, settings, customers, returns
+from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard, supplier, settings, customers, returns, organizations, plans
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
@@ -102,6 +102,8 @@ app.include_router(supplier.router)
 app.include_router(settings.router)
 app.include_router(customers.router)
 app.include_router(returns.router)
+app.include_router(organizations.router)
+app.include_router(plans.router)
 
 @app.get("/", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):
