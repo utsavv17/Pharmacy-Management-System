@@ -99,6 +99,12 @@ class CustomerService:
         return customer
 
     @staticmethod
+    def delete_customer(db: Session, customer_id: int, org_id: int) -> None:
+        customer = CustomerService.get_customer(db, customer_id, org_id)
+        db.delete(customer)
+        db.commit()
+
+    @staticmethod
     def get_customer_sales(db: Session, customer_id: int, org_id: int, skip: int = 0, limit: int = 50) -> Tuple[List[Sale], int]:
         query = db.query(Sale).filter(Sale.customer_id == customer_id, Sale.organization_id == org_id)
         total = query.count()

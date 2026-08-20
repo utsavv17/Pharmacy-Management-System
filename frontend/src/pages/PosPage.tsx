@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useOrganization } from '@/contexts/OrganizationContext';
+
 import { PageHeader } from '@/components/layout/PageHeader';
 import { 
   Search, ShoppingCart, 
-  Store, User, CreditCard, 
-  RefreshCw, Minus, Plus, Trash2, Banknote, IndianRupee, HandCoins, Info,
+  User, CreditCard, 
+  RefreshCw, Minus, Plus, Trash2, Banknote, HandCoins, Info,
   Tag, Loader2, CheckCircle2
 } from 'lucide-react';
 import { Customer } from '@/types';
@@ -48,13 +48,13 @@ export const PosPage = () => {
   const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
   
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit'>('cash');
   
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { currentOrganization } = useOrganization();
+
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -157,7 +157,8 @@ export const PosPage = () => {
   }, [posMedicines, searchTerm]);
   
   const subtotal = cart.reduce((sum, item) => sum + (item.selling_price * item.quantity), 0);
-  const grandTotal = Math.max(0, subtotal - (Number(discountAmount) || 0));
+  const discountAmount = subtotal * (Number(discountPercent) || 0) / 100;
+  const grandTotal = Math.max(0, subtotal - discountAmount);
 
   // Cart Handlers
   const addToCart = (med: POSMedicine) => {
@@ -189,7 +190,7 @@ export const PosPage = () => {
       return;
     }
     const item = cart.find(c => c.batch_id === batchId);
-    if (item && qty > item.quantity) {
+    if (item && qty > item.stock) {
       toast({ title: 'Quantity exceeds available stock', variant: 'destructive' });
       return;
     }
@@ -202,7 +203,7 @@ export const PosPage = () => {
     setIsWalkin(false);
     setCustomerPhoneInput('');
     setDebouncedPhone('');
-    setDiscountAmount(0);
+    setDiscountPercent(0);
     setPaymentMethod('cash');
     setSearchTerm('');
   };
@@ -227,7 +228,7 @@ export const PosPage = () => {
     mutationFn: async () => {
       const payload = {
         customer_id: selectedCustomer ? selectedCustomer.id : null,
-        discount_amount: Number(discountAmount) || 0,
+        discount_amount: Math.round(discountAmount * 100) / 100,
         payment_method: paymentMethod,
         items: cart.map(item => ({
           medicine_id: item.medicine_id,
@@ -263,15 +264,9 @@ export const PosPage = () => {
         description="Create and complete pharmacy sales"
         icon={ShoppingCart}
         actions={
-          <>
-            <Button variant="outline" className="bg-white rounded-xl text-slate-700 font-semibold border-slate-200">
-              <Store className="w-4 h-4 mr-2 text-slate-400" /> 
-              <span className="text-slate-800">{currentOrganization?.name || 'My Medical'}</span>
-            </Button>
-            <Button variant="outline" className="bg-white rounded-xl text-slate-700 font-semibold border-slate-200" onClick={resetPos}>
-              <RefreshCw className="w-4 h-4 mr-2 text-slate-400" /> Reset
-            </Button>
-          </>
+          <Button variant="outline" className="bg-white rounded-xl text-slate-700 font-semibold border-slate-200" onClick={resetPos}>
+            <RefreshCw className="w-4 h-4 mr-2 text-slate-400" /> Reset
+          </Button>
         }
       />
 
@@ -538,20 +533,25 @@ export const PosPage = () => {
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <Tag className="w-3.5 h-3.5 text-slate-400" />
-                  <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Discount</h3>
+                  <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Discount (%)</h3>
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <IndianRupee className="h-4 w-4 text-slate-400" />
-                  </div>
                   <Input 
                     type="number"
                     min="0"
-                    placeholder="0.00"
-                    value={discountAmount || ''} 
-                    onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)}
-                    className="rounded-lg bg-white border-slate-200 pl-8"
+                    max="100"
+                    step="0.5"
+                    placeholder="0"
+                    value={discountPercent || ''} 
+                    onChange={e => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setDiscountPercent(Math.min(100, Math.max(0, val)));
+                    }}
+                    className="rounded-lg bg-white border-slate-200 pr-8"
                   />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-sm font-semibold text-slate-400">%</span>
+                  </div>
                 </div>
               </section>
 
@@ -604,9 +604,9 @@ export const PosPage = () => {
                   <span>Subtotal</span>
                   <span className="font-medium">₹{subtotal.toFixed(2)}</span>
                 </div>
-                {discountAmount > 0 && (
+                {discountPercent > 0 && (
                   <div className="flex justify-between text-red-500">
-                    <span>Discount</span>
+                    <span>Discount ({discountPercent}%)</span>
                     <span>-₹{discountAmount.toFixed(2)}</span>
                   </div>
                 )}

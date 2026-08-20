@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Loader2, Activity, Package } from 'lucide-react';
+import { Search, Loader2, Activity, Package, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useToast } from '@/hooks/use-toast';
 
 interface BatchInventoryItem {
   batch_id: number;
@@ -24,9 +26,13 @@ interface BatchInventoryItem {
 
 export const InventoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('ALL'); // ALL, NORMAL, LOW_STOCK, NEAR_EXPIRY, EXPIRED, OUT_OF_STOCK
-  
+  const [filter, setFilter] = useState('ALL');
   const [movementBatchId, setMovementBatchId] = useState<number | null>(null);
+  const [editingBatch, setEditingBatch] = useState<BatchInventoryItem | null>(null);
+  const [editForm, setEditForm] = useState({ selling_price: 0, purchase_price: 0, quantity: 0, expiry_date: '' });
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: inventory, isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -45,6 +51,41 @@ export const InventoryPage = () => {
     },
     enabled: !!movementBatchId
   });
+
+  const updateBatchMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const response = await apiClient.put(`/batches/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['posMedicines'] });
+      setEditingBatch(null);
+      toast({ title: 'Success', description: 'Batch updated successfully.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.response?.data?.message || 'Failed to update batch', variant: 'destructive' });
+    }
+  });
+
+  const handleEditBatch = (item: BatchInventoryItem) => {
+    setEditingBatch(item);
+    setEditForm({
+      selling_price: item.selling_price,
+      purchase_price: item.purchase_price,
+      quantity: item.available_quantity,
+      expiry_date: item.expiry_date,
+    });
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBatch) return;
+    updateBatchMutation.mutate({
+      id: editingBatch.batch_id,
+      data: editForm,
+    });
+  };
 
   // Helper functions for status
   const getStatus = (item: BatchInventoryItem) => {
@@ -199,10 +240,15 @@ export const InventoryPage = () => {
                     <TableCell className="text-right font-medium text-slate-800">₹{item.selling_price.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                     <TableCell className="text-center">
-                      <Button variant="ghost" size="sm" onClick={() => setMovementBatchId(item.batch_id)} className="text-primary hover:bg-[#E8F0EB]">
-                        <Activity className="w-4 h-4 mr-2" />
-                        History
-                      </Button>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setMovementBatchId(item.batch_id)} className="text-primary hover:bg-[#E8F0EB]">
+                          <Activity className="w-4 h-4 mr-1" />
+                          History
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditBatch(item)} className="text-slate-400 hover:text-primary hover:bg-[#E8F0EB]">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -256,6 +302,74 @@ export const InventoryPage = () => {
               <div className="py-10 text-center text-slate-500">No movement history found.</div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Batch Modal */}
+      <Dialog open={!!editingBatch} onOpenChange={(open) => !open && setEditingBatch(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Batch</DialogTitle>
+          </DialogHeader>
+          {editingBatch && (
+            <form onSubmit={handleSaveEdit} className="space-y-4 py-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                <p className="text-sm font-semibold text-slate-700">{editingBatch.medicine_name}</p>
+                <p className="text-xs text-slate-500">Batch: {editingBatch.batch_no}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Purchase Price (₹)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    min="0" 
+                    value={editForm.purchase_price}
+                    onChange={e => setEditForm({ ...editForm, purchase_price: parseFloat(e.target.value) || 0 })}
+                    className="rounded-lg bg-white border-slate-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Selling Price (₹)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    min="0" 
+                    value={editForm.selling_price}
+                    onChange={e => setEditForm({ ...editForm, selling_price: parseFloat(e.target.value) || 0 })}
+                    className="rounded-lg bg-white border-slate-200"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input 
+                    type="number" 
+                    min="0" 
+                    value={editForm.quantity}
+                    onChange={e => setEditForm({ ...editForm, quantity: parseInt(e.target.value) || 0 })}
+                    className="rounded-lg bg-white border-slate-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expiry Date</Label>
+                  <Input 
+                    type="date" 
+                    value={editForm.expiry_date}
+                    onChange={e => setEditForm({ ...editForm, expiry_date: e.target.value })}
+                    className="rounded-lg bg-white border-slate-200"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" className="rounded-xl border-slate-200" onClick={() => setEditingBatch(null)}>Cancel</Button>
+                <Button type="submit" className="rounded-xl bg-[#1A5F50] hover:bg-[#144d40] text-white" disabled={updateBatchMutation.isPending}>
+                  {updateBatchMutation.isPending ? 'Saving...' : 'Update Batch'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 

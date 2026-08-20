@@ -8,13 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Search, Trash2, Eye, ArrowLeft, Download, ShoppingBag } from 'lucide-react';
+import { Loader2, Plus, Search, Trash2, Eye, ArrowLeft, Download, ShoppingBag, FileUp } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { InvoiceImportModal } from '@/features/purchases/InvoiceImportModal';
 
 export const PurchasesPage = () => {
   const [view, setView] = useState<'list' | 'create'>('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingPurchase, setViewingPurchase] = useState<Purchase | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -249,14 +251,19 @@ export const PurchasesPage = () => {
         description="View past stock purchases and supplier invoices"
         icon={ShoppingBag}
         actions={
-          <Button className="bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl font-semibold shadow-sm" onClick={() => {
-            setSupplierId('');
-            setPurchaseDate(new Date().toISOString().split('T')[0]);
-            setItems([]);
-            setView('create');
-          }}>
-            <Plus className="w-4 h-4 mr-2" /> New Purchase
-          </Button>
+          <div className="flex space-x-3">
+            <Button variant="outline" className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 rounded-xl font-semibold shadow-sm" onClick={() => setIsImportModalOpen(true)}>
+              <FileUp className="w-4 h-4 mr-2 text-blue-600" /> Import Invoice
+            </Button>
+            <Button className="bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl font-semibold shadow-sm" onClick={() => {
+              setSupplierId('');
+              setPurchaseDate(new Date().toISOString().split('T')[0]);
+              setItems([]);
+              setView('create');
+            }}>
+              <Plus className="w-4 h-4 mr-2" /> New Purchase
+            </Button>
+          </div>
         }
       />
 
@@ -376,6 +383,17 @@ export const PurchasesPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Import Modal */}
+      <InvoiceImportModal 
+        open={isImportModalOpen} 
+        onOpenChange={setIsImportModalOpen} 
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['purchases'] });
+          queryClient.invalidateQueries({ queryKey: ['medicines'] });
+          queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+        }} 
+      />
     </div>
   );
 };

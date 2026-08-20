@@ -20,7 +20,11 @@ class PurchaseService:
                 purchase_date=data.purchase_date,
                 total_amount=0,
                 created_at=datetime.now(),
-                organization_id=org_id
+                organization_id=org_id,
+                invoice_source=getattr(data, "invoice_source", "MANUAL"),
+                original_invoice_filename=getattr(data, "original_invoice_filename", None),
+                invoice_file_hash=getattr(data, "invoice_file_hash", None),
+                supplier_invoice_number=getattr(data, "supplier_invoice_number", None)
             )
 
             db.add(purchase)

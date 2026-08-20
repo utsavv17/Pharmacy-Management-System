@@ -9,7 +9,13 @@ from app.core.deps import get_current_user, get_current_organization
 from app.main import get_db
 from app.utils.pagination import Paginator
 from app.models.purchase import Purchase
-
+from app.models.supplier import Supplier
+from app.models.medicine import Medicine
+import hashlib
+from fastapi import UploadFile, File, HTTPException
+from app.services.invoice_parser.text_parser import TextInvoiceParser
+from app.services.matching_service import MatchingService
+from app.schemas.invoice import InvoiceConfirmPayload, InvoiceExtractionResult
 
 router = APIRouter(prefix="/purchases", tags=["Purchases"])
 
@@ -175,3 +181,160 @@ def get_purchase(
             ]
         }
     }
+
+@router.post("/import-invoice")
+async def import_invoice(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
+):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+        
+    content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="Empty file uploaded.")
+        
+    file_hash = hashlib.sha256(content).hexdigest()
+    
+    # Duplicate Check
+    existing = db.query(Purchase).filter(
+        Purchase.organization_id == org_id,
+        Purchase.invoice_file_hash == file_hash
+    ).first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"This invoice has already been imported on {existing.created_at.date() if existing.created_at else 'unknown date'} (Purchase ID: {existing.id})"
+        )
+        
+    # Write to a temp file for pdfplumber
+    import tempfile
+    import os
+    
+    fd, temp_path = tempfile.mkstemp(suffix=".pdf")
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(content)
+            
+        with open(temp_path, 'rb') as f:
+            parser = TextInvoiceParser()
+            result = parser.parse(f, file.filename, file_hash)
+            
+        # Run matching
+        result = MatchingService.process_extraction(db, org_id, result)
+        
+        return {
+            "success": True,
+            "message": "Invoice analyzed successfully.",
+            "data": result.model_dump()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse invoice: {str(e)}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+@router.post("/import-invoice/confirm")
+def confirm_imported_invoice(
+    payload: InvoiceConfirmPayload,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
+):
+    # 1. Duplicate check again to be safe
+    existing = db.query(Purchase).filter(
+        Purchase.organization_id == org_id,
+        Purchase.invoice_file_hash == payload.file_hash
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=409, detail="This invoice has already been imported.")
+        
+    # 2. Supplier Resolution
+    supplier_id = payload.supplier_id
+    if payload.create_supplier and payload.supplier_details and payload.supplier_details.name:
+        # Create missing supplier
+        new_supplier = Supplier(
+            name=payload.supplier_details.name,
+            phone=payload.supplier_details.phone or "N/A",
+            email=payload.supplier_details.email,
+            address=payload.supplier_details.address,
+            organization_id=org_id
+        )
+        db.add(new_supplier)
+        db.flush()
+        supplier_id = new_supplier.id
+        
+    if not supplier_id:
+        raise HTTPException(status_code=400, detail="Supplier could not be resolved.")
+        
+    # Get supplier name for purchase
+    supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
+    
+    # 3. Create mapping to PurchaseCreate
+    from app.schemas.purchase import PurchaseCreate, PurchaseItemCreate
+    
+    purchase_items = []
+    for item in payload.items:
+        med_id = item.medicine_id
+        if item.create_medicine and item.product_name:
+            new_med = Medicine(
+                name=item.product_name,
+                manufacturer=item.manufacturer or "Unknown",
+                category="General",
+                unit="Unit",
+                organization_id=org_id
+            )
+            db.add(new_med)
+            db.flush()
+            med_id = new_med.id
+            
+        if not med_id:
+            raise HTTPException(status_code=400, detail=f"Medicine '{item.product_name}' could not be resolved.")
+            
+        purchase_items.append(
+            PurchaseItemCreate(
+                medicine_id=med_id,
+                batch_no=item.batch_no,
+                expiry_date=item.expiry_date,
+                purchase_price=item.purchase_price,
+                selling_price=item.mrp,
+                quantity=item.quantity + item.free_quantity
+            )
+        )
+        
+    # 4. Construct PurchaseCreate
+    purchase_data = PurchaseCreate(
+        invoice_number=payload.invoice_number or f"IMPORT-{payload.file_hash[:8]}",
+        supplier_id=supplier_id,
+        supplier_name=supplier.name if supplier else None,
+        purchase_date=payload.invoice_date,
+        items=purchase_items,
+        invoice_source="IMPORTED",
+        original_invoice_filename=payload.source_filename,
+        invoice_file_hash=payload.file_hash,
+        supplier_invoice_number=payload.invoice_number
+    )
+    
+    # 5. Use existing PurchaseService
+    try:
+        purchase = PurchaseService.create_purchase(db, purchase_data, org_id)
+        
+        return {
+            "success": True,
+            "message": "Invoice imported successfully.",
+            "data": {
+                "purchase_id": purchase.id,
+                "invoice_number": purchase.invoice_number,
+                "items_count": len(purchase.items),
+                "total_quantity": sum(i.quantity for i in purchase.items),
+                "total_amount": purchase.total_amount
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to import purchase: {str(e)}")

@@ -45,7 +45,8 @@ def create_medicine(
             "unit": med.unit,
             "strength": med.strength,
             "barcode": med.barcode,
-            "image_url": med.image_url
+            "image_url": med.image_url,
+            "minimum_stock_level": med.minimum_stock_level
         }
     }
 
@@ -80,7 +81,8 @@ def bulk_create_medicines(
                 "unit": med.unit,
                 "strength": med.strength,
                 "barcode": med.barcode,
-                "image_url": med.image_url
+                "image_url": med.image_url,
+                "minimum_stock_level": med.minimum_stock_level
             })
     
     return {
@@ -127,7 +129,8 @@ def get_medicine_detail(
             "unit": medicine.unit,
             "strength": medicine.strength,
             "barcode": medicine.barcode,
-            "image_url": medicine.image_url
+            "image_url": medicine.image_url,
+            "minimum_stock_level": medicine.minimum_stock_level
         }
     }
 
@@ -177,6 +180,7 @@ def list_medicines(
                     "strength": item[0].strength,
                     "barcode": item[0].barcode,
                     "image_url": item[0].image_url,
+                    "minimum_stock_level": item[0].minimum_stock_level,
                     "price": item[1] if len(item) > 1 and item[1] else None,
                     "expiry_date": item[2].isoformat() if len(item) > 2 and item[2] else None
                 }
@@ -217,7 +221,8 @@ def update_medicine(
             "unit": med.unit,
             "strength": med.strength,
             "barcode": med.barcode,
-            "image_url": med.image_url
+            "image_url": med.image_url,
+            "minimum_stock_level": med.minimum_stock_level
         }
     }
 

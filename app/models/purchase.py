@@ -13,6 +13,12 @@ class Purchase(Base):
     total_amount = Column(Float, nullable=False, default=0)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    
+    # Invoice Import Metadata
+    invoice_source = Column(String, nullable=False, default="MANUAL") # "MANUAL" or "IMPORTED"
+    original_invoice_filename = Column(String, nullable=True)
+    invoice_file_hash = Column(String, nullable=True, index=True)
+    supplier_invoice_number = Column(String, nullable=True)
 
     items = relationship("PurchaseItem", back_populates="purchase", cascade="all, delete")
     supplier = relationship("Supplier")

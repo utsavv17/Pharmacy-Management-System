@@ -68,6 +68,16 @@ def update_customer(
 ):
     return CustomerService.update_customer(db, customer_id, customer_in, org_id)
 
+@router.delete("/{customer_id}")
+def delete_customer(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
+):
+    CustomerService.delete_customer(db, customer_id, org_id)
+    return {"success": True, "message": "Customer deleted successfully"}
+
 @router.get("/{customer_id}/sales", response_model=dict)
 def get_customer_sales(
     customer_id: int,

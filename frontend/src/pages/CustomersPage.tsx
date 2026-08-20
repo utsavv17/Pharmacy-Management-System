@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Search, Plus, Phone, Mail, Award, History, Loader2 } from 'lucide-react';
+import { Users, Search, Plus, Phone, Mail, Award, History, Loader2, Edit, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CustomerHistoryModal } from '@/components/customers/CustomerHistoryModal';
 
@@ -17,6 +17,7 @@ export const CustomersPage = () => {
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedHistoryCustomer, setSelectedHistoryCustomer] = useState<any>(null);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -36,8 +37,7 @@ export const CustomersPage = () => {
     },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Customer added successfully.' });
-      setIsAddOpen(false);
-      setFormData({ name: '', phone: '', email: '', address: '' });
+      closeFormDialog();
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
     onError: (error: any) => {
@@ -49,14 +49,80 @@ export const CustomersPage = () => {
     }
   });
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const updateCustomerMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
+      const response = await apiClient.put(`/customers/${id}`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Customer updated successfully.' });
+      closeFormDialog();
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || 'Failed to update customer', 
+        variant: 'destructive' 
+      });
+    }
+  });
+
+  const deleteCustomerMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiClient.delete(`/customers/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Customer deleted successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.detail || 'Failed to delete customer', 
+        variant: 'destructive' 
+      });
+    }
+  });
+
+  const closeFormDialog = () => {
+    setIsAddOpen(false);
+    setEditingCustomer(null);
+    setFormData({ name: '', phone: '', email: '', address: '' });
+  };
+
+  const handleEdit = (customer: any) => {
+    setEditingCustomer(customer);
+    setFormData({
+      name: customer.name || '',
+      phone: customer.phone || '',
+      email: customer.email || '',
+      address: customer.address || '',
+    });
+    setIsAddOpen(true);
+  };
+
+  const handleDelete = (customer: any) => {
+    if (window.confirm(`Are you sure you want to delete "${customer.name}"?`)) {
+      deleteCustomerMutation.mutate(customer.id);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) {
       toast({ title: 'Validation Error', description: 'Name and Phone are required', variant: 'destructive' });
       return;
     }
-    addCustomerMutation.mutate(formData);
+    if (editingCustomer) {
+      updateCustomerMutation.mutate({ id: editingCustomer.id, data: formData });
+    } else {
+      addCustomerMutation.mutate(formData);
+    }
   };
+
+  const isSaving = addCustomerMutation.isPending || updateCustomerMutation.isPending;
 
   return (
     <div className="w-full space-y-6 pb-10">
@@ -65,17 +131,20 @@ export const CustomersPage = () => {
         description="Manage pharmacy customers and loyalty points"
         icon={Users}
         actions={
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+          <Dialog open={isAddOpen} onOpenChange={(open) => {
+            if (!open) closeFormDialog();
+            else setIsAddOpen(true);
+          }}>
             <DialogTrigger asChild>
-              <Button className="bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl font-semibold shadow-sm">
+              <Button className="bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl font-semibold shadow-sm" onClick={() => { setEditingCustomer(null); setFormData({ name: '', phone: '', email: '', address: '' }); }}>
                 <Plus className="mr-2 h-4 w-4" /> Add Customer
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Add New Customer</DialogTitle>
+                <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleAddSubmit} className="space-y-4 py-4">
+              <form onSubmit={handleSubmit} className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name *</Label>
                   <Input 
@@ -120,10 +189,10 @@ export const CustomersPage = () => {
                   />
                 </div>
                 <DialogFooter className="mt-4">
-                  <Button type="button" variant="outline" className="rounded-xl border-slate-200" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="rounded-xl bg-[#1A5F50] hover:bg-[#144d40] text-white" disabled={addCustomerMutation.isPending}>
-                    {addCustomerMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    Save Customer
+                  <Button type="button" variant="outline" className="rounded-xl border-slate-200" onClick={closeFormDialog}>Cancel</Button>
+                  <Button type="submit" className="rounded-xl bg-[#1A5F50] hover:bg-[#144d40] text-white" disabled={isSaving}>
+                    {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    {editingCustomer ? 'Update Customer' : 'Save Customer'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -201,9 +270,17 @@ export const CustomersPage = () => {
                       <span className="font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded-md">{customer.total_orders}</span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-primary hover:bg-[#E8F0EB]" onClick={() => setSelectedHistoryCustomer(customer)}>
-                        <History className="w-4 h-4 mr-2" /> History
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" className="text-primary hover:bg-[#E8F0EB]" onClick={() => setSelectedHistoryCustomer(customer)}>
+                          <History className="w-4 h-4 mr-1" /> History
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-primary hover:bg-[#E8F0EB]" onClick={() => handleEdit(customer)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => handleDelete(customer)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

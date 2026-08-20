@@ -18,6 +18,12 @@ class PurchaseCreate(BaseModel):
     supplier_name: str | None = None
     purchase_date: date
     items: List[PurchaseItemCreate]
+    
+    # Import Metadata
+    invoice_source: str = "MANUAL"
+    original_invoice_filename: str | None = None
+    invoice_file_hash: str | None = None
+    supplier_invoice_number: str | None = None
 
 # Response Schemas
 class PurchaseItemResponse(BaseModel):

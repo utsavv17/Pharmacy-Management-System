@@ -8,6 +8,7 @@ from app.models.purchase import Purchase
 from app.models.batch import Batch
 from app.models.medicine import Medicine
 from app.models.supplier import Supplier
+from app.models.customer import Customer
 
 
 class DashboardService:
@@ -111,13 +112,25 @@ class DashboardService:
         
         total_revenue -= total_discount
 
+        # Total purchases (all time)
+        total_purchases = (
+            db.query(func.sum(Purchase.total_amount))
+            .filter(Purchase.organization_id == org_id)
+            .scalar()
+        ) or 0.0
+
+        # Total customers
+        total_customers = db.query(func.count(Customer.id)).filter(Customer.organization_id == org_id).scalar() or 0
+
         return {
             "total_medicines": total_medicines,
             "total_suppliers": total_suppliers,
             "total_sales": total_sales_count,
             "total_items_sold": int(total_items_sold),
             "total_discount": round(float(total_discount), 2),
-            "total_revenue": round(float(total_revenue), 2)
+            "total_revenue": round(float(total_revenue), 2),
+            "total_purchases": round(float(total_purchases), 2),
+            "total_customers": total_customers
         }
 
     # 2. Inventory Summary
@@ -167,6 +180,26 @@ class DashboardService:
             for b in near_expiry
         ]
 
+        # Expired stock
+        expired = (
+            db.query(Batch)
+            .filter(Batch.expiry_date < today,
+                    Batch.quantity > 0,
+                    Batch.organization_id == org_id)
+            .all()
+        )
+
+        expired_list = [
+            {
+                "batch_id": b.id,
+                "medicine_id": b.medicine_id,
+                "batch_no": b.batch_no,
+                "expiry_date": str(b.expiry_date),
+                "quantity": b.quantity
+            }
+            for b in expired
+        ]
+
         # Total stock value (purchase price * qty)
         stock_value = (
             db.query(func.sum(Batch.purchase_price * Batch.quantity))
@@ -177,6 +210,7 @@ class DashboardService:
         return {
             "low_stock": low_stock_list,
             "near_expiry": near_expiry_list,
+            "expired_stock": expired_list,
             "total_stock_value": round(float(stock_value), 2)
         }
 

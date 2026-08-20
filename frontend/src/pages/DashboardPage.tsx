@@ -28,6 +28,14 @@ export const DashboardPage = () => {
     },
   });
 
+  const { data: inventoryData, isLoading: inventoryLoading } = useQuery({
+    queryKey: ['dashboardInventory'],
+    queryFn: async () => {
+      const response = await apiClient.get('/dashboard/inventory');
+      return response.data.data;
+    },
+  });
+
   const formatCurrency = (amount: number) => {
     return amount.toFixed(2);
   };
@@ -46,7 +54,7 @@ export const DashboardPage = () => {
     year: 'numeric'
   }).format(new Date());
 
-  if (isLoading || todayLoading) {
+  if (isLoading || todayLoading || inventoryLoading) {
     return (
       <div className="space-y-8 animate-pulse">
         <div className="h-8 bg-slate-200 rounded w-48 mb-2"></div>
@@ -103,7 +111,7 @@ export const DashboardPage = () => {
             <TrendingUp className="w-4 h-4 text-slate-400" />
           </div>
           <div>
-            <div className="text-3xl font-bold text-[#0B3B2C] mb-1">{todayData?.today_sales_count || 0}</div>
+            <div className="text-3xl font-bold text-[#0B3B2C] mb-1">{todayData?.today_sales || 0}</div>
             <p className="text-xs text-slate-400 font-medium">Invoices billed since 9:00 AM</p>
           </div>
         </div>
@@ -116,21 +124,21 @@ export const DashboardPage = () => {
           </div>
           <div>
             <div className="text-3xl font-bold text-[#0B3B2C] mb-1">
-              {todayData?.today_sales_count ? formatCurrency(todayData.today_revenue / todayData.today_sales_count) : '—'}
+              {todayData?.today_sales ? formatCurrency(todayData.today_revenue / todayData.today_sales) : '—'}
             </div>
             <p className="text-xs text-slate-400 font-medium">Calculated after first sale</p>
           </div>
         </div>
 
-        {/* Prescriptions Billed */}
+        {/* Items Sold Today */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between h-[140px]">
           <div className="flex justify-between items-start">
-            <h3 className="text-sm font-medium text-slate-500">Prescriptions billed</h3>
-            <FileText className="w-4 h-4 text-slate-400" />
+            <h3 className="text-sm font-medium text-slate-500">Items sold today</h3>
+            <ShoppingCart className="w-4 h-4 text-slate-400" />
           </div>
           <div>
-            <div className="text-3xl font-bold text-[#0B3B2C] mb-1">0</div>
-            <p className="text-xs text-slate-400 font-medium">Rx-linked sales today</p>
+            <div className="text-3xl font-bold text-[#0B3B2C] mb-1">{todayData?.today_items_sold || 0}</div>
+            <p className="text-xs text-slate-400 font-medium">Total quantity of medicines sold</p>
           </div>
         </div>
 
@@ -193,13 +201,15 @@ export const DashboardPage = () => {
               </Badge>
             </div>
             <div className="mb-6">
-              <div className="text-4xl font-bold text-[#0B3B2C] mb-1">0</div>
+              <div className="text-4xl font-bold text-[#0B3B2C] mb-1">{inventoryData?.low_stock?.length || 0}</div>
               <p className="text-sm text-slate-600 font-medium">medicines below minimum level</p>
             </div>
             <div className="mt-auto">
               <div className="border-t border-dashed border-slate-200 pt-6 pb-6 text-center">
                 <p className="text-xs text-slate-400 px-4 leading-relaxed">
-                  Nothing below minimum yet — add stock levels to start tracking.
+                  {inventoryData?.low_stock?.length > 0 
+                    ? `Action needed: ${inventoryData.low_stock.length} medicines need restocking.`
+                    : "Nothing below minimum yet — add stock levels to start tracking."}
                 </p>
               </div>
               <Button className="w-full bg-[#B92B27] hover:bg-[#9a2420] text-white rounded-xl py-6 font-semibold shadow-sm" onClick={() => navigate('/inventory')}>
@@ -216,13 +226,15 @@ export const DashboardPage = () => {
               </Badge>
             </div>
             <div className="mb-6">
-              <div className="text-4xl font-bold text-[#0B3B2C] mb-1">0</div>
+              <div className="text-4xl font-bold text-[#0B3B2C] mb-1">{inventoryData?.near_expiry?.length || 0}</div>
               <p className="text-sm text-slate-600 font-medium">batches approaching expiry</p>
             </div>
             <div className="mt-auto">
               <div className="border-t border-dashed border-slate-200 pt-6 pb-6 text-center">
                 <p className="text-xs text-slate-400 px-4 leading-relaxed">
-                  Batch expiry tracking will appear here once stock is added.
+                  {inventoryData?.near_expiry?.length > 0 
+                    ? `Warning: ${inventoryData.near_expiry.length} batches expire soon.`
+                    : "Batch expiry tracking will appear here once stock is added."}
                 </p>
               </div>
               <Button className="w-full bg-[#B07D10] hover:bg-[#90660d] text-white rounded-xl py-6 font-semibold shadow-sm" onClick={() => navigate('/inventory')}>
@@ -239,13 +251,15 @@ export const DashboardPage = () => {
               </Badge>
             </div>
             <div className="mb-6">
-              <div className="text-4xl font-bold text-[#0B3B2C] mb-1">0</div>
+              <div className="text-4xl font-bold text-[#0B3B2C] mb-1">{inventoryData?.expired_stock?.length || 0}</div>
               <p className="text-sm text-slate-600 font-medium">batches blocked from sale</p>
             </div>
             <div className="mt-auto">
               <div className="border-t border-dashed border-slate-200 pt-6 pb-6 text-center">
                 <p className="text-xs text-slate-400 px-4 leading-relaxed">
-                  Expired batches are auto-blocked at billing to keep sales compliant.
+                  {inventoryData?.expired_stock?.length > 0 
+                    ? `Critical: ${inventoryData.expired_stock.length} expired batches found.`
+                    : "Expired batches are auto-blocked at billing to keep sales compliant."}
                 </p>
               </div>
               <Button className="w-full bg-[#9a2420] hover:bg-[#7e1c19] text-white rounded-xl py-6 font-semibold shadow-sm" onClick={() => navigate('/inventory')}>
@@ -255,12 +269,6 @@ export const DashboardPage = () => {
           </div>
 
         </div>
-      </div>
-
-      {/* Recent Activity placeholder to match screenshot */}
-      <div className="pt-4 border-t border-dashed border-slate-200">
-        <h2 className="text-xl font-bold text-[#0B3B2C] mb-4">Recent activity</h2>
-        <div className="text-sm text-slate-400 italic">Activity log will appear here...</div>
       </div>
 
     </div>
