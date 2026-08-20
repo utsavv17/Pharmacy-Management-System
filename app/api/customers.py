@@ -31,6 +31,15 @@ def get_customers(
         "limit": limit
     }
 
+@router.get("/search", response_model=CustomerResponse)
+def search_customer_by_phone(
+    phone: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
+):
+    return CustomerService.search_by_phone(db, phone, org_id)
+
 @router.get("/{customer_id}", response_model=CustomerResponse)
 def get_customer(
     customer_id: int,

@@ -133,6 +133,17 @@ The application will be available at `http://localhost:8000`
 docker-compose down
 ```
 
+### Database Seeding
+
+To seed the database with production-like data (organizations, plans, users, medicines, customers, purchases, sales, etc.), run the following command after starting the services:
+
+```bash
+docker compose exec app python scripts/seed_database.py
+```
+
+The script is idempotent and safe to run multiple times. It will output the test login credentials (e.g. `superadmin@mymedical.test`, `owner.central@mymedical.test`) when finished.
+
+
 ## 📚 API Documentation
 
 Once the application is running, access the interactive API documentation:

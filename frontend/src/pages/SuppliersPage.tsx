@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Search, Trash2, Edit } from 'lucide-react';
+import { Loader2, Plus, Search, Trash2, Edit, Truck } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export const SuppliersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -113,106 +114,117 @@ export const SuppliersPage = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Suppliers</h1>
-        
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          if (!open) setEditingSupplier(null);
-          setIsDialogOpen(open);
-        }}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}><Plus className="w-4 h-4 mr-2" /> Add Supplier</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Contact Person Name *</Label>
-                <Input id="name" name="name" required defaultValue={editingSupplier?.name || ''} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company_name">Company Name</Label>
-                <Input id="company_name" name="company_name" defaultValue={editingSupplier?.company_name || ''} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" name="phone" defaultValue={editingSupplier?.phone || ''} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" defaultValue={editingSupplier?.email || ''} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input id="address" name="address" defaultValue={editingSupplier?.address || ''} />
-              </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
-                {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Supplier'}
+    <div className="w-full space-y-6 pb-10">
+      <PageHeader
+        title="Suppliers"
+        description="Manage your distributors and wholesale contacts"
+        icon={Truck}
+        actions={
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if (!open) setEditingSupplier(null);
+            setIsDialogOpen(open);
+          }}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreateDialog} className="bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl font-semibold shadow-sm">
+                <Plus className="w-4 h-4 mr-2" /> Add Supplier
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Contact Person Name *</Label>
+                  <Input id="name" name="name" required defaultValue={editingSupplier?.name || ''} className="rounded-lg bg-white border-slate-200" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company_name">Company Name</Label>
+                  <Input id="company_name" name="company_name" defaultValue={editingSupplier?.company_name || ''} className="rounded-lg bg-white border-slate-200" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" name="phone" defaultValue={editingSupplier?.phone || ''} className="rounded-lg bg-white border-slate-200" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" name="email" type="email" defaultValue={editingSupplier?.email || ''} className="rounded-lg bg-white border-slate-200" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input id="address" name="address" defaultValue={editingSupplier?.address || ''} className="rounded-lg bg-white border-slate-200" />
+                </div>
+                <Button type="submit" className="w-full bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Supplier'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
-      <div className="flex items-center space-x-2 bg-background border rounded-md px-3 py-2 max-w-sm">
-        <Search className="w-4 h-4 text-muted-foreground" />
-        <input 
-          className="flex-1 bg-transparent border-none outline-none text-sm" 
-          placeholder="Search suppliers..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+        <div className="p-4 border-b border-slate-100 bg-white flex justify-between items-center">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              className="pl-9 bg-slate-50 border-slate-200 rounded-xl w-full" 
+              placeholder="Search suppliers..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
 
-      <div className="border rounded-md bg-background">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Contact Person</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                </TableCell>
+        <div className="overflow-x-auto flex-1">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                <TableHead className="font-semibold text-slate-600">Contact Person</TableHead>
+                <TableHead className="font-semibold text-slate-600">Company</TableHead>
+                <TableHead className="font-semibold text-slate-600">Phone</TableHead>
+                <TableHead className="font-semibold text-slate-600">Email</TableHead>
+                <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
               </TableRow>
-            ) : filteredSuppliers?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                  No suppliers found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredSuppliers?.map((supplier) => (
-                <TableRow key={supplier.id}>
-                  <TableCell className="font-medium">{supplier.name}</TableCell>
-                  <TableCell>{supplier.company_name || '-'}</TableCell>
-                  <TableCell>{supplier.phone || '-'}</TableCell>
-                  <TableCell>{supplier.email || '-'}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(supplier)}>
-                      <Edit className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(supplier.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : filteredSuppliers?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                    No suppliers found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredSuppliers?.map((supplier) => (
+                  <TableRow key={supplier.id} className="hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="font-semibold text-slate-800">{supplier.name}</TableCell>
+                    <TableCell className="font-medium text-slate-700">{supplier.company_name || '-'}</TableCell>
+                    <TableCell className="text-slate-600">{supplier.phone || '-'}</TableCell>
+                    <TableCell className="text-slate-600">{supplier.email || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(supplier)} className="text-slate-400 hover:text-primary hover:bg-[#E8F0EB]">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(supplier.id)} className="text-slate-400 hover:text-red-500 hover:bg-red-50">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

@@ -119,6 +119,12 @@ def delete_supplier(
             "message": "Supplier not found",
             "error": "NOT_FOUND"
         }
+    if error == "HAS_RELATED_RECORDS":
+        return {
+            "success": False,
+            "message": "Cannot delete supplier because there are purchases associated with it. Please deactivate instead if supported.",
+            "error": "HAS_RELATED_RECORDS"
+        }
         
     return {
         "success": True,

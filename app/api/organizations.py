@@ -75,8 +75,7 @@ def create_organization(
     org_data = org_in.model_dump(exclude={"password"})
     org = Organization(**org_data)
     db.add(org)
-    db.commit()
-    db.refresh(org)
+    db.flush()
     
     # 4. Create the Owner User for this organization
     owner_user = User(
@@ -84,11 +83,10 @@ def create_organization(
         full_name=org.owner_name,
         hashed_password=hash_password(org_in.password),
         role="owner",
-        is_active=True,
+        is_active=1,
         organization_id=org.id
     )
     db.add(owner_user)
-    db.commit()
     
     # Initialize basic settings for the new organization
     from app.models.settings import Settings
@@ -97,11 +95,12 @@ def create_organization(
         pharmacy_name=org.name,
         address=org.address or "",
         phone=org.phone,
-        email=org.email,
-        currency="Tk"
+        email=org.email
     )
     db.add(settings)
+    
     db.commit()
+    db.refresh(org)
 
     return org
 

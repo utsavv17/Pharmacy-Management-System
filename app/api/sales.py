@@ -140,23 +140,20 @@ def get_pos_medicines(
 def create_sale(
     payload: SaleCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     """
     Create a sale. Request schema should match app/schemas/sale.SaleCreate.
     Business errors are returned with consistent JSON format.
     """
     try:
-        sale = SaleService.create_sale(db, payload)
+        sale = SaleService.create_sale(db, payload, org_id)
     except Exception as exc:
         # Known business error strings from service or Python exceptions are returned cleanly
-        message = str(exc)
-        # If it's a stock / batch problem, return 400 with structured error
-        return {
-            "success": False,
-            "message": message,
-            "error": "BUSINESS_ERROR"
-        }
+        if isinstance(exc, HTTPException):
+            raise exc
+        raise HTTPException(status_code=400, detail=str(exc))
 
     # format response
     return {
@@ -188,14 +185,15 @@ def create_sale(
 def create_multiple_sales(
     sales: List[SaleCreate],
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
     created_sales = []
     errors = []
     
     for i, sale_data in enumerate(sales):
         try:
-            sale = SaleService.create_sale(db, sale_data)
+            sale = SaleService.create_sale(db, sale_data, org_id)
             created_sales.append({
                 "id": sale.id,
                 "invoice_number": sale.invoice_number,

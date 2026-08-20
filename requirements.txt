@@ -11,4 +11,8 @@ pydantic-settings
 python-jose
 pydantic[email]
 reportlab
-slowapi
+slowapipdfplumber
+pytesseract
+pdf2image
+Pillow
+python-multipart

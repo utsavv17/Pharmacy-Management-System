@@ -1,0 +1,38 @@
+<svg width="640" height="360" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2FB6A3"/>
+      <stop offset="100%" stop-color="#1E8FB3"/>
+    </linearGradient>
+    <linearGradient id="crossGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#EAF7F5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icon badge -->
+  <g transform="translate(60, 40)">
+    <circle cx="90" cy="90" r="90" fill="url(#bgGrad)"/>
+
+    <!-- Pulse line -->
+    <path d="M30 90 H60 L72 60 L90 120 L104 90 H150"
+          fill="none" stroke="#FFFFFF" stroke-width="7"
+          stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+
+    <!-- Cross -->
+    <g>
+      <rect x="76" y="48" width="28" height="84" rx="8" fill="url(#crossGrad)"/>
+      <rect x="48" y="76" width="84" height="28" rx="8" fill="url(#crossGrad)"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(280, 118)">
+    <text x="0" y="0" font-family="'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="56" font-weight="700" fill="#FFFFFF">My Medical</text>
+    <text x="0" y="46" font-family="'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="22" font-weight="500" letter-spacing="1.5" fill="#2FB6A3">
+      CARE IN YOUR POCKET
+    </text>
+  </g>
+</svg>

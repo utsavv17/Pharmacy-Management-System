@@ -8,7 +8,31 @@ from app.models.sale import Sale
 from app.models.reward_transaction import RewardTransaction
 from app.schemas.customer import CustomerCreate, CustomerUpdate
 
+import re
+
 class CustomerService:
+    @staticmethod
+    def normalize_phone(phone: str) -> str:
+        """Normalize Indian phone numbers to 10 digits if possible."""
+        if not phone:
+            return ""
+        cleaned = re.sub(r'[^\d+]', '', phone)
+        if cleaned.startswith("+91"):
+            cleaned = cleaned[3:]
+        elif cleaned.startswith("91") and len(cleaned) == 12:
+            cleaned = cleaned[2:]
+        return cleaned
+
+    @staticmethod
+    def search_by_phone(db: Session, phone: str, org_id: int) -> Customer:
+        normalized = CustomerService.normalize_phone(phone)
+        if not normalized:
+            raise HTTPException(status_code=400, detail="Invalid phone number")
+        customer = db.query(Customer).filter(Customer.phone == normalized, Customer.organization_id == org_id).first()
+        if not customer:
+            raise HTTPException(status_code=404, detail="Customer not found")
+        return customer
+
     @staticmethod
     def get_customers(db: Session, org_id: int, skip: int = 0, limit: int = 100, search: str = None, active_only: bool = False) -> Tuple[List[Customer], int]:
         query = db.query(Customer).filter(Customer.organization_id == org_id)
@@ -38,6 +62,9 @@ class CustomerService:
 
     @staticmethod
     def create_customer(db: Session, customer_in: CustomerCreate, org_id: int) -> Customer:
+        # Normalize phone
+        customer_in.phone = CustomerService.normalize_phone(customer_in.phone)
+        
         # Check if phone exists
         existing = db.query(Customer).filter(Customer.phone == customer_in.phone, Customer.organization_id == org_id).first()
         if existing:
@@ -55,11 +82,14 @@ class CustomerService:
         
         update_data = customer_in.model_dump(exclude_unset=True)
         
-        # Check phone uniqueness if it's being updated
-        if "phone" in update_data and update_data["phone"] != customer.phone:
-            existing = db.query(Customer).filter(Customer.phone == update_data["phone"], Customer.organization_id == org_id).first()
-            if existing:
-                raise HTTPException(status_code=400, detail="Customer with this phone number already exists")
+        if "phone" in update_data:
+            update_data["phone"] = CustomerService.normalize_phone(update_data["phone"])
+            
+            # Check phone uniqueness if it's being updated
+            if update_data["phone"] != customer.phone:
+                existing = db.query(Customer).filter(Customer.phone == update_data["phone"], Customer.organization_id == org_id).first()
+                if existing:
+                    raise HTTPException(status_code=400, detail="Customer with this phone number already exists")
                 
         for field, value in update_data.items():
             setattr(customer, field, value)

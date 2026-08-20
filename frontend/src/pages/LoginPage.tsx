@@ -7,12 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Pill } from 'lucide-react';
+import { Pill, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import MyMedicalLogo from '@/assets/my-medical-logo.svg';
 import { useToast } from '@/hooks/use-toast';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -46,53 +48,88 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md shadow-lg border-primary/20">
-        <CardHeader className="space-y-2 text-center pb-6">
-          <div className="flex justify-center mb-2">
-            <div className="bg-primary p-3 rounded-full">
-              <Pill className="w-8 h-8 text-primary-foreground" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4">
+      <Card className="w-full max-w-[420px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none rounded-2xl bg-white pb-2 pt-8 px-2">
+        <CardHeader className="space-y-4 text-center pb-8">
+          {/* Logo Header */}
+          <div className="flex flex-col items-center justify-center space-y-6">
+            <img src={MyMedicalLogo} alt="My Medical Logo" className="h-[52px] w-auto" />
+            <div className="text-center space-y-1.5">
+              <h1 className="text-[22px] font-bold tracking-tight text-[#0a2540]">Welcome Back</h1>
+              <p className="text-[13.5px] text-gray-500 font-medium">
+                Sign in to your account
+              </p>
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">Welcome Back</CardTitle>
-          <CardDescription>
-            Sign in to your Pharmacy Management account
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@example.com"
-                value={email}
-                onChange={(e: any) => setEmail(e.target.value)}
-                required
-                className="bg-background"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-[18px] w-[18px] text-gray-400" />
+                </div>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e: any) => setEmail(e.target.value)}
+                  required
+                  className="pl-10 h-11 bg-white border-gray-200 text-[#0a2540] placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-[#0879D1] focus-visible:border-[#0879D1] rounded-lg transition-all"
+                />
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e: any) => setPassword(e.target.value)}
-                required
-                className="bg-background"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-[18px] w-[18px] text-gray-400" />
+                </div>
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e: any) => setPassword(e.target.value)}
+                  required
+                  className="pl-10 pr-10 h-11 bg-white border-gray-200 text-[#0a2540] placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-[#0879D1] focus-visible:border-[#0879D1] rounded-lg transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-[18px] w-[18px]" />
+                  ) : (
+                    <Eye className="h-[18px] w-[18px]" />
+                  )}
+                </button>
+              </div>
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
+            
+            <Button 
+              type="submit" 
+              className="w-full h-11 bg-gradient-to-r from-[#0879D1] to-[#16A34A] hover:from-[#0665af] hover:to-[#12863c] text-white font-medium rounded-lg shadow-sm border-0 transition-all active:scale-[0.98]" 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </div>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center text-sm text-muted-foreground pt-4 border-t">
-          Pharmacy Management System v1.0
+        <CardFooter className="flex justify-center text-[13px] font-medium text-[#0a2540] pt-6 pb-2">
+          <div className="flex items-center gap-2">
+            <span>Manage</span>
+            <span className="text-[#0879D1] font-bold">&bull;</span>
+            <span>Track</span>
+            <span className="text-[#0879D1] font-bold">&bull;</span>
+            <span>Grow</span>
+          </div>
         </CardFooter>
       </Card>
     </div>

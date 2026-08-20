@@ -84,9 +84,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         
         if not allowed:
             logger.warning(f"Rate limit exceeded for IP {ip} on {endpoint}")
-            raise HTTPException(
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={
+                content={
                     "success": False,
                     "message": message,
                     "error": "RATE_LIMIT_EXCEEDED"

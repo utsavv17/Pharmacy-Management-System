@@ -176,9 +176,10 @@ def get_stock_movement(
 def get_medicine_stock(
     medicine_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    data = InventoryService.get_medicine_stock(db, medicine_id)
+    data = InventoryService.get_medicine_stock(db, medicine_id, org_id)
 
     return {
         "success": True,
@@ -191,9 +192,10 @@ def get_medicine_stock(
 def get_low_stock(
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    data = InventoryService.get_low_stock(db, limit)
+    data = InventoryService.get_low_stock(db, org_id, limit)
 
     return {
         "success": True,
@@ -206,9 +208,10 @@ def get_low_stock(
 def get_near_expiry(
     days: int = 30,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    data = InventoryService.get_near_expiry(db, days)
+    data = InventoryService.get_near_expiry(db, org_id, days)
 
     return {
         "success": True,
@@ -220,9 +223,10 @@ def get_near_expiry(
 @router.get("/expired")
 def get_expired(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
 ):
-    data = InventoryService.get_expired(db)
+    data = InventoryService.get_expired(db, org_id)
 
     return {
         "success": True,

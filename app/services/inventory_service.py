@@ -34,19 +34,30 @@ class InventoryService:
     @staticmethod
     def get_low_stock(db: Session, org_id: int, limit: int = 20):
         """Medicines with stock <= minimum_stock_level"""
-        medicines = db.query(Medicine).filter(Medicine.organization_id == org_id).all()
+        from sqlalchemy import func
+        
+        query = (
+            db.query(
+                Medicine.id,
+                Medicine.name,
+                Medicine.minimum_stock_level,
+                func.coalesce(func.sum(Batch.quantity), 0).label("total_stock")
+            )
+            .outerjoin(Batch, (Batch.medicine_id == Medicine.id) & (Batch.organization_id == org_id))
+            .filter(Medicine.organization_id == org_id)
+            .group_by(Medicine.id)
+            .having(func.coalesce(func.sum(Batch.quantity), 0) <= Medicine.minimum_stock_level)
+            .limit(limit)
+        )
 
         result = []
-
-        for m in medicines:
-            total_stock = sum(b.quantity for b in m.batches)
-            if total_stock <= m.minimum_stock_level:
-                result.append({
-                    "medicine_id": m.id,
-                    "name": m.name,
-                    "total_stock": total_stock,
-                    "minimum_stock_level": m.minimum_stock_level
-                })
+        for row in query.all():
+            result.append({
+                "medicine_id": row.id,
+                "name": row.name,
+                "total_stock": row.total_stock,
+                "minimum_stock_level": row.minimum_stock_level
+            })
 
         return result
 

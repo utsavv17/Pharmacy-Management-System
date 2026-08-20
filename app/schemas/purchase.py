@@ -14,6 +14,7 @@ class PurchaseItemCreate(BaseModel):
 # Purchase Create Schema
 class PurchaseCreate(BaseModel):
     invoice_number: str | None = None
+    supplier_id: int | None = None
     supplier_name: str | None = None
     purchase_date: date
     items: List[PurchaseItemCreate]
@@ -35,6 +36,7 @@ class PurchaseItemResponse(BaseModel):
 class PurchaseResponse(BaseModel):
     id: int
     invoice_number: str
+    supplier_id: int | None
     supplier_name: str | None
     purchase_date: date
     total_amount: float

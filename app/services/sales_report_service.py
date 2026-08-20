@@ -104,7 +104,7 @@ class SalesReportService:
                 func.sum(SaleItem.quantity).label("qty"),
                 func.sum(SaleItem.selling_price * SaleItem.quantity).label("revenue"),
             )
-            .filter(SaleItem.medicine_id == medicine_id)
+            .filter(SaleItem.medicine_id == medicine_id, SaleItem.organization_id == org_id)
             .group_by(SaleItem.batch_id)
             .all()
         )

@@ -47,7 +47,7 @@ class ReturnService:
         points_to_reverse = 0
 
         for item_in in return_in.items:
-            sale_item = db.query(SaleItem).filter(SaleItem.id == item_in.sale_item_id, SaleItem.sale_id == sale.id).first()
+            sale_item = db.query(SaleItem).filter(SaleItem.id == item_in.sale_item_id, SaleItem.sale_id == sale.id, SaleItem.organization_id == org_id).first()
             if not sale_item:
                 raise HTTPException(status_code=400, detail=f"Sale item {item_in.sale_item_id} not found in this sale")
                 
@@ -58,7 +58,7 @@ class ReturnService:
                 raise HTTPException(status_code=400, detail=f"Cannot return {item_in.quantity} for item {sale_item.id}. Max returnable is {returnable_qty}")
                 
             # Restock into ORIGINAL batch
-            batch = db.query(Batch).filter(Batch.id == sale_item.batch_id).with_for_update().first()
+            batch = db.query(Batch).filter(Batch.id == sale_item.batch_id, Batch.organization_id == org_id).with_for_update().first()
             if not batch:
                 raise HTTPException(status_code=500, detail=f"Original batch {sale_item.batch_id} not found for restocking")
                 

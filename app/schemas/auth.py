@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 
 class LoginSchema(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 class TokenResponse(BaseModel):

@@ -22,10 +22,10 @@ export interface Medicine {
 export interface Batch {
   id: number;
   medicine_id: number;
-  batch_number: string;
+  batch_no: string;
   purchase_price: number;
   selling_price: number;
-  stock: number;
+  quantity: number;
   expiry_date: string;
 }
 

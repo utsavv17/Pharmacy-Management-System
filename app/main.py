@@ -9,7 +9,7 @@ from app.utils.settings import initialize_settings
 from app.db.db import get_db
 import app.db.base # Ensures all models are registered for SQLAlchemy mapper
 
-from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard, supplier, settings, customers, returns, organizations, plans
+from app.api import auth, user, medicine, batch, inventory, purchase, sales, invoice, sales_report, dashboard, supplier, settings, customers, returns, organizations, plans, search
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
@@ -82,7 +82,7 @@ app.add_middleware(
 # 5. Trusted host (validate Host header)
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "54.179.188.174", "develop.d393xravvewyoy.amplifyapp.com", "*"]
+    allowed_hosts=["localhost", "127.0.0.1", "54.179.188.174", "develop.d393xravvewyoy.amplifyapp.com"]
 )
 
 initialize_settings()
@@ -104,6 +104,7 @@ app.include_router(customers.router)
 app.include_router(returns.router)
 app.include_router(organizations.router)
 app.include_router(plans.router)
+app.include_router(search.router)
 
 @app.get("/", tags=["Health"])
 def health_check(db: Session = Depends(get_db)):

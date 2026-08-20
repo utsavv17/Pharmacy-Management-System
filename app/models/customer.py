@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, func, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 
@@ -7,9 +7,13 @@ class Customer(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
-    phone = Column(String, index=True, nullable=False, unique=True)
+    phone = Column(String, index=True, nullable=False)
     email = Column(String, nullable=True)
     address = Column(String, nullable=True)
+    
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'phone', name='uq_customer_organization_phone'),
+    )
     
     # Cached summaries
     total_points = Column(Integer, default=0, nullable=False)

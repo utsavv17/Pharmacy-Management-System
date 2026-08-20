@@ -170,9 +170,17 @@ class PDFService:
             Paragraph("<b>Total</b>", base_normal),
         ])
 
+        # Prefetch medicines to avoid N+1 queries
+        medicine_ids = [item.medicine_id for item in sale.items]
+        medicines = db.query(Medicine).filter(
+            Medicine.id.in_(medicine_ids), 
+            Medicine.organization_id == org_id
+        ).all()
+        medicine_dict = {m.id: m for m in medicines}
+
         # rows
         for item in sale.items:
-            med = db.query(Medicine).filter(Medicine.id == item.medicine_id, Medicine.organization_id == org_id).first()
+            med = medicine_dict.get(item.medicine_id)
             name = med.name if med else f"Medicine ID: {item.medicine_id}"
             qty = str(item.quantity)
             price = f"{item.selling_price:.0f} Tk"

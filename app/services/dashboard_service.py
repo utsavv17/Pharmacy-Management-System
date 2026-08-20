@@ -105,6 +105,7 @@ class DashboardService:
             .select_from(SaleItem)
             .join(Sale, SaleItem.sale_id == Sale.id)
             .join(Batch, SaleItem.batch_id == Batch.id)
+            .filter(Sale.organization_id == org_id)
             .scalar()
         ) or 0.0
         

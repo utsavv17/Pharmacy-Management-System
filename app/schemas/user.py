@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 class UserCreateSchema(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     full_name: str = ""
     role: str = "staff"   # allowed: admin, staff
@@ -12,3 +12,10 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     role: str
+
+class UserUpdateSchema(BaseModel):
+    full_name: str
+
+class ChangePasswordSchema(BaseModel):
+    current_password: str
+    new_password: str

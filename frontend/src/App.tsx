@@ -20,6 +20,7 @@ import { SalesHistoryPage } from './pages/SalesHistoryPage';
 import { OrganizationsPage } from './pages/OrganizationsPage';
 import { AddPharmacyPage } from './pages/AddPharmacyPage';
 import { PlansPage } from './pages/PlansPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,7 @@ function App() {
                   <Route path="/organizations" element={<OrganizationsPage />} />
                   <Route path="/organizations/add" element={<AddPharmacyPage />} />
                   <Route path="/plans" element={<PlansPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
                 </Route>
               </Route>
 

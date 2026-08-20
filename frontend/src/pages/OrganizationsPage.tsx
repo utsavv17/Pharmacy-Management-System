@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Building, Plus, Users, LayoutList } from 'lucide-react';
+import { Building, Plus, MapPin, Mail, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Organization } from '@/contexts/OrganizationContext';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export const OrganizationsPage = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -33,65 +33,99 @@ export const OrganizationsPage = () => {
     }
   };
 
+  const handleDeactivate = async (orgId: number, orgName: string) => {
+    if (!window.confirm(`Are you sure you want to deactivate ${orgName}? This will prevent all users in this organization from logging in.`)) {
+      return;
+    }
+    
+    try {
+      await apiClient.delete(`/organizations/${orgId}`);
+      toast({
+        title: "Organization Deactivated",
+        description: `${orgName} has been successfully deactivated.`,
+      });
+      fetchOrganizations();
+    } catch (error: any) {
+      toast({
+        title: "Error deactivating organization",
+        description: error.response?.data?.detail || "Please try again later.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Organizations</h1>
-          <p className="text-muted-foreground mt-1">Manage pharmacies and medical stores across the platform.</p>
-        </div>
-        <Button onClick={() => navigate('/organizations/add')} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Pharmacy
-        </Button>
-      </div>
+    <div className="w-full space-y-6 pb-10">
+      <PageHeader
+        title="Organizations"
+        description="Manage pharmacies and medical stores across the platform"
+        icon={Building}
+        actions={
+          <Button onClick={() => navigate('/organizations/add')} className="bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl font-semibold shadow-sm">
+            <Plus className="w-4 h-4 mr-2" /> Add Pharmacy
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : organizations.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-12 bg-muted/20 border-dashed">
-          <Building className="w-12 h-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-1">No organizations found</h3>
-          <p className="text-sm text-muted-foreground mb-4">Get started by creating a new pharmacy.</p>
-          <Button onClick={() => navigate('/organizations/add')} variant="outline">
-            Add Pharmacy
+        <div className="flex flex-col items-center justify-center py-16 bg-white border border-slate-200 border-dashed rounded-2xl">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <Building className="w-8 h-8 text-slate-300" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 mb-1">No organizations found</h3>
+          <p className="text-sm text-slate-500 mb-6">Get started by creating a new pharmacy.</p>
+          <Button onClick={() => navigate('/organizations/add')} className="bg-[#1A5F50] hover:bg-[#144d40] text-white rounded-xl">
+            <Plus className="w-4 h-4 mr-2" /> Add Pharmacy
           </Button>
-        </Card>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {organizations.map((org) => (
-            <Card key={org.id} className="hover:border-primary/50 transition-colors">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex justify-between items-start">
-                  <span className="truncate">{org.name}</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    org.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 
-                    org.status === 'SUSPENDED' ? 'bg-red-100 text-red-700' : 
-                    'bg-gray-100 text-gray-700'
+            <div key={org.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
+              <div className="p-5 flex-1">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#E8F0EB] flex items-center justify-center text-primary shrink-0">
+                    <Building className="w-6 h-6" />
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                    org.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border border-green-200' : 
+                    org.status === 'SUSPENDED' ? 'bg-red-50 text-red-700 border border-red-200' : 
+                    'bg-slate-50 text-slate-600 border border-slate-200'
                   }`}>
                     {org.status}
                   </span>
-                </CardTitle>
-                <CardDescription className="truncate">{org.owner_name}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center text-muted-foreground">
+                </div>
+                
+                <h3 className="text-xl font-bold text-slate-800 mb-1 line-clamp-1">{org.name}</h3>
+                <p className="text-sm font-medium text-slate-500 mb-4 line-clamp-1">Owner: {org.owner_name}</p>
+                
+                <div className="space-y-2.5">
+                  <div className="flex items-center text-sm text-slate-600">
+                    <Mail className="w-4 h-4 mr-2.5 text-slate-400 shrink-0" />
                     <span className="truncate">{org.email}</span>
                   </div>
-                  <div className="flex items-center text-muted-foreground">
+                  <div className="flex items-center text-sm text-slate-600">
+                    <Phone className="w-4 h-4 mr-2.5 text-slate-400 shrink-0" />
                     <span>{org.phone}</span>
                   </div>
                 </div>
-                <div className="mt-4 pt-4 border-t flex justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/organizations/${org.id}`)}>
-                    View Details
+              </div>
+              
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                {org.status === 'ACTIVE' && (
+                  <Button variant="outline" size="sm" className="rounded-lg text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleDeactivate(org.id, org.name)}>
+                    Deactivate
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
+                )}
+                <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-slate-700 font-semibold hover:bg-white" onClick={() => navigate(`/organizations/${org.id}`)}>
+                  View Details
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}

@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.models.supplier import Supplier
 
 
@@ -35,7 +36,10 @@ class SupplierService:
         supplier = db.query(Supplier).filter(Supplier.id == supplier_id, Supplier.organization_id == org_id).first()
         if not supplier:
             return "NOT_FOUND"
-            
-        db.delete(supplier)
-        db.commit()
-        return None
+        try:
+            db.delete(supplier)
+            db.commit()
+            return None
+        except IntegrityError:
+            db.rollback()
+            return "HAS_RELATED_RECORDS"

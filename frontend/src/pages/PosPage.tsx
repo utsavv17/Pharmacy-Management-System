@@ -1,20 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Loader2, Plus, Trash2, Receipt, ShoppingCart, Award } from 'lucide-react';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { 
+  Search, ShoppingCart, 
+  Store, User, CreditCard, 
+  RefreshCw, Minus, Plus, Trash2, Banknote, IndianRupee, HandCoins, Info,
+  Tag, Loader2, CheckCircle2
+} from 'lucide-react';
 import { Customer } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface POSMedicine {
   medicine_id: number;
   medicine_name: string;
   batch_id: number;
-  batch_number: string;
+  batch_no: string;
   stock: number;
   selling_price: number;
   expiry_date: string;
@@ -25,48 +32,139 @@ interface CartItem extends POSMedicine {
 }
 
 export const PosPage = () => {
+  // State
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   
-  const [customerId, setCustomerId] = useState<string>('');
-  const [customerName, setCustomerName] = useState('');
+  // Customer Flow State
+  const [customerPhoneInput, setCustomerPhoneInput] = useState('');
+  const [debouncedPhone, setDebouncedPhone] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isWalkin, setIsWalkin] = useState(false);
+  
+  // Add Customer Modal State
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
   
   const [discountAmount, setDiscountAmount] = useState<number>(0);
-  const [pointsRedeemed, setPointsRedeemed] = useState<number>(0);
-  const POINT_VALUE = 0.1; // Rs 0.1 per point based on backend defaults
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit'>('cash');
   
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { currentOrganization } = useOrganization();
 
-  const { data: posMedicines, isLoading } = useQuery({
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        setSearchTerm('');
+        searchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Debounce phone input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedPhone(customerPhoneInput);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [customerPhoneInput]);
+
+  const cleanPhoneLength = debouncedPhone.replace(/[^\d]/g, '').length;
+  const isSearching = cleanPhoneLength >= 10 && !selectedCustomer && !isWalkin;
+
+  const { data: searchedCustomer, isLoading: isSearchingCustomer } = useQuery({
+    queryKey: ['customer', 'search', debouncedPhone],
+    queryFn: async () => {
+      if (cleanPhoneLength < 10) return null;
+      try {
+        const response = await apiClient.get(`/customers/search`, { params: { phone: debouncedPhone } });
+        return response.data as Customer;
+      } catch (err: any) {
+        if (err.response?.status === 404) return null;
+        throw err;
+      }
+    },
+    enabled: isSearching,
+    retry: false
+  });
+
+  // Auto-select if found
+  useEffect(() => {
+    if (searchedCustomer && !selectedCustomer && !isWalkin) {
+      setSelectedCustomer(searchedCustomer);
+    }
+  }, [searchedCustomer, selectedCustomer, isWalkin]);
+
+  const handleChangeCustomer = () => {
+    setSelectedCustomer(null);
+    setIsWalkin(false);
+    setCustomerPhoneInput('');
+    setDebouncedPhone('');
+  };
+
+  const createCustomerMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        name: newCustomerName,
+        phone: customerPhoneInput,
+        email: newCustomerEmail,
+        address: newCustomerAddress
+      };
+      const response = await apiClient.post('/customers/', payload);
+      return response.data as Customer;
+    },
+    onSuccess: (data) => {
+      setSelectedCustomer(data);
+      setIsCustomerModalOpen(false);
+      toast({ title: 'Customer created successfully' });
+      // clear modal state
+      setNewCustomerName('');
+      setNewCustomerEmail('');
+      setNewCustomerAddress('');
+    },
+    onError: (error: any) => {
+      toast({ title: 'Failed to create customer', description: error.response?.data?.detail || 'Error', variant: 'destructive' });
+    }
+  });
+
+  // Data Fetching
+  const { data: posMedicines, isLoading: isMedicinesLoading } = useQuery({
     queryKey: ['posMedicines'],
     queryFn: async () => {
       const response = await apiClient.get('/sales/pos/medicines');
       return response.data.data.items as POSMedicine[];
     },
   });
-  
-  const { data: customersData } = useQuery({
-    queryKey: ['customers', 'active'],
-    queryFn: async () => {
-      const response = await apiClient.get('/customers', { params: { active_only: true, limit: 1000 } });
-      return response.data.items as Customer[];
-    },
-  });
 
+  // Derived State
   const filteredMedicines = useMemo(() => {
-    if (!searchTerm) return [];
+    if (!searchTerm.trim()) return [];
     return posMedicines?.filter(m => 
       (m.medicine_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
-      (m.batch_number?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      (m.batch_no?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     ) || [];
   }, [posMedicines, searchTerm]);
   
-  const selectedCustomer = useMemo(() => {
-    if (!customerId) return null;
-    return customersData?.find(c => c.id.toString() === customerId) || null;
-  }, [customerId, customersData]);
+  const subtotal = cart.reduce((sum, item) => sum + (item.selling_price * item.quantity), 0);
+  const grandTotal = Math.max(0, subtotal - (Number(discountAmount) || 0));
 
+  // Cart Handlers
   const addToCart = (med: POSMedicine) => {
+    if (med.stock <= 0) {
+      toast({ title: 'Out of stock', variant: 'destructive' });
+      return;
+    }
     const existing = cart.find(c => c.batch_id === med.batch_id);
     if (existing) {
       if (existing.quantity >= med.stock) {
@@ -75,12 +173,10 @@ export const PosPage = () => {
       }
       setCart(cart.map(c => c.batch_id === med.batch_id ? { ...c, quantity: c.quantity + 1 } : c));
     } else {
-      if (med.stock <= 0) {
-        toast({ title: 'Out of stock', variant: 'destructive' });
-        return;
-      }
       setCart([...cart, { ...med, quantity: 1 }]);
     }
+    setSearchTerm('');
+    searchInputRef.current?.focus();
   };
 
   const removeFromCart = (batchId: number) => {
@@ -88,28 +184,51 @@ export const PosPage = () => {
   };
 
   const updateQuantity = (batchId: number, qty: number) => {
-    if (qty <= 0) return;
+    if (qty <= 0) {
+      removeFromCart(batchId);
+      return;
+    }
     const item = cart.find(c => c.batch_id === batchId);
-    if (item && qty > item.stock) {
+    if (item && qty > item.quantity) {
       toast({ title: 'Quantity exceeds available stock', variant: 'destructive' });
       return;
     }
     setCart(cart.map(c => c.batch_id === batchId ? { ...c, quantity: qty } : c));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.selling_price * item.quantity), 0);
-  const loyaltyDiscount = pointsRedeemed * POINT_VALUE;
-  const grandTotal = Math.max(0, subtotal - discountAmount - loyaltyDiscount);
+  const resetPos = () => {
+    setCart([]);
+    setSelectedCustomer(null);
+    setIsWalkin(false);
+    setCustomerPhoneInput('');
+    setDebouncedPhone('');
+    setDiscountAmount(0);
+    setPaymentMethod('cash');
+    setSearchTerm('');
+  };
 
-  const [completedSale, setCompletedSale] = useState<{ id: number; invoice_number: string; total_amount: number; points_earned: number } | null>(null);
+  // API Handlers
+  const handleDownloadInvoiceDirectly = async (sale: any) => {
+    try {
+      const response = await apiClient.get(`/invoice/sale/${sale.id}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice-${sale.invoice_number}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      toast({ title: 'Invoice Error', description: 'Failed to download invoice.', variant: 'destructive' });
+    }
+  };
 
   const createSaleMutation = useMutation({
     mutationFn: async () => {
       const payload = {
-        customer_id: customerId ? parseInt(customerId) : null,
-        customer_name: !customerId ? customerName : null,
-        discount_amount: discountAmount,
-        points_redeemed: pointsRedeemed,
+        customer_id: selectedCustomer ? selectedCustomer.id : null,
+        discount_amount: Number(discountAmount) || 0,
+        payment_method: paymentMethod,
         items: cart.map(item => ({
           medicine_id: item.medicine_id,
           quantity: item.quantity,
@@ -120,289 +239,457 @@ export const PosPage = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      toast({ title: 'Success', description: 'Sale completed successfully.' });
-      setCompletedSale(data.data);
+      toast({ title: 'Sale Completed', description: 'Transaction processed successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['sales_history'] });
+      queryClient.invalidateQueries({ queryKey: ['posMedicines'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardTotals'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
+      
+      resetPos();
+      
+      setTimeout(() => {
+        handleDownloadInvoiceDirectly(data.data);
+      }, 500);
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.response?.data?.detail || error.response?.data?.message || 'Failed to complete sale', variant: 'destructive' });
+      toast({ title: 'Transaction Failed', description: error.response?.data?.detail || 'Failed to complete sale', variant: 'destructive' });
     }
   });
 
-  const handleCheckout = () => {
-    if (cart.length === 0) {
-      toast({ title: 'Cart is empty', variant: 'destructive' });
-      return;
-    }
-    if (selectedCustomer && pointsRedeemed > selectedCustomer.total_points) {
-      toast({ title: 'Invalid Points', description: 'Cannot redeem more points than available', variant: 'destructive' });
-      return;
-    }
-    createSaleMutation.mutate();
-  };
-
-  const handleNewSale = () => {
-    setCart([]);
-    setCustomerId('');
-    setCustomerName('');
-    setDiscountAmount(0);
-    setPointsRedeemed(0);
-    setSearchTerm('');
-    setCompletedSale(null);
-  };
-
-  const handleDownloadInvoice = async () => {
-    if (!completedSale) return;
-    try {
-      const response = await apiClient.get(`/invoice/sale/${completedSale.id}`, {
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `invoice-${completedSale.invoice_number}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to generate invoice.', variant: 'destructive' });
-    }
-  };
-
-  if (completedSale) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] space-y-6">
-        <div className="bg-green-100 p-6 rounded-full">
-          <Receipt className="w-16 h-16 text-green-600" />
-        </div>
-        <h1 className="text-3xl font-bold">Sale Completed Successfully</h1>
-        <div className="text-center space-y-2 text-lg">
-          <p className="text-muted-foreground">Invoice: <span className="font-mono font-medium text-foreground">{completedSale.invoice_number}</span></p>
-          <p className="text-muted-foreground">Total: <span className="font-bold text-foreground">₹{completedSale.total_amount.toFixed(2)}</span></p>
-          {completedSale.points_earned > 0 && (
-            <p className="text-primary font-medium flex items-center justify-center mt-2">
-              <Award className="w-5 h-5 mr-2" /> Earned {completedSale.points_earned} loyalty points!
-            </p>
-          )}
-        </div>
-        <div className="flex gap-4 pt-6">
-          <Button size="lg" variant="outline" onClick={handleDownloadInvoice}>
-            Download Invoice
-          </Button>
-          <Button size="lg" onClick={handleNewSale}>
-            New Sale
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)]">
-      {/* Left side: Search and Items */}
-      <div className="flex-1 flex flex-col space-y-4">
-        <h1 className="text-3xl font-bold tracking-tight">Point of Sale</h1>
+    <div className="w-full">
+      <PageHeader
+        title="Point of sale"
+        description="Create and complete pharmacy sales"
+        icon={ShoppingCart}
+        actions={
+          <>
+            <Button variant="outline" className="bg-white rounded-xl text-slate-700 font-semibold border-slate-200">
+              <Store className="w-4 h-4 mr-2 text-slate-400" /> 
+              <span className="text-slate-800">{currentOrganization?.name || 'My Medical'}</span>
+            </Button>
+            <Button variant="outline" className="bg-white rounded-xl text-slate-700 font-semibold border-slate-200" onClick={resetPos}>
+              <RefreshCw className="w-4 h-4 mr-2 text-slate-400" /> Reset
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-20">
         
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input 
-            className="pl-9 h-12 text-lg" 
-            placeholder="Search medicine or batch to add..." 
-            value={searchTerm}
-            onChange={(e: any) => setSearchTerm(e.target.value)}
-          />
+        {/* LEFT COLUMN: Search & Cart */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          
+          {/* Search Box */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search medicine, SKU, or batch..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full bg-white border border-slate-200 shadow-sm rounded-xl py-3 pl-12 pr-16 text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono text-slate-500 font-medium">
+                Ctrl K
+              </kbd>
+            </div>
+
+            {/* Search Dropdown */}
+            {searchTerm && (
+              <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-lg max-h-80 overflow-y-auto">
+                {isMedicinesLoading ? (
+                  <div className="p-4 text-center text-slate-500"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+                ) : filteredMedicines.length > 0 ? (
+                  filteredMedicines.map(med => (
+                    <div 
+                      key={med.batch_id} 
+                      className={`p-3 border-b border-slate-100 flex items-center justify-between cursor-pointer transition-colors ${med.stock > 0 ? 'hover:bg-slate-50' : 'opacity-60 bg-slate-50'}`}
+                      onClick={() => med.stock > 0 && addToCart(med)}
+                    >
+                      <div>
+                        <h4 className="font-semibold text-slate-800">{med.medicine_name}</h4>
+                        <div className="text-xs text-slate-500 flex gap-3 mt-1">
+                          <span>Batch: {med.batch_no}</span>
+                          <span className={med.stock < 10 ? 'text-red-500 font-medium' : ''}>Stock: {med.stock}</span>
+                          <span>Exp: {med.expiry_date}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-primary">₹{med.selling_price.toFixed(2)}</div>
+                        {med.stock <= 0 && <Badge variant="outline" className="text-red-500 border-red-200 bg-red-50 mt-1">Out of Stock</Badge>}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-slate-500">No medicines found matching "{searchTerm}"</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Current Cart */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex-1 flex flex-col min-h-[400px]">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+              <h2 className="text-lg font-bold text-[#0B3B2C]">Current cart</h2>
+              <Badge variant="outline" className="bg-slate-50 text-slate-600 font-medium border-slate-200">
+                {cart.length} items
+              </Badge>
+            </div>
+
+            {cart.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                  <ShoppingCart className="w-8 h-8 text-slate-300" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-1">Your cart is empty</h3>
+                <p className="text-sm text-slate-500 max-w-sm">
+                  Search for a medicine above to start a new sale.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto flex-1 bg-white">
+                <table className="w-full text-sm text-left text-slate-600">
+                  <thead className="text-xs text-slate-400 uppercase bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Item</th>
+                      <th className="px-5 py-3 font-medium text-center">Qty</th>
+                      <th className="px-5 py-3 font-medium text-right">Price</th>
+                      <th className="px-5 py-3 font-medium text-right">Total</th>
+                      <th className="px-5 py-3 text-center"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cart.map((item) => (
+                      <tr key={item.batch_id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                        <td className="px-5 py-4">
+                          <p className="font-semibold text-slate-800">{item.medicine_name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Batch: {item.batch_no} <span className="mx-1">•</span> Stock: {item.quantity}</p>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-7 w-7 rounded-md border-slate-200 hover:bg-slate-100"
+                              onClick={() => updateQuantity(item.batch_id, item.quantity - 1)}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-6 text-center font-medium">{item.quantity}</span>
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-7 w-7 rounded-md border-slate-200 hover:bg-slate-100"
+                              onClick={() => updateQuantity(item.batch_id, item.quantity + 1)}
+                              disabled={item.quantity >= item.stock}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-right font-medium">
+                          ₹{item.selling_price.toFixed(2)}
+                        </td>
+                        <td className="px-5 py-4 text-right font-bold text-slate-800">
+                          ₹{(item.selling_price * item.quantity).toFixed(2)}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                            onClick={() => removeFromCart(item.batch_id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
         </div>
 
-        {searchTerm && (
-          <Card className="max-h-64 overflow-y-auto z-10 relative">
-            <CardContent className="p-0">
-              {isLoading ? (
-                <div className="p-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-primary" /></div>
-              ) : filteredMedicines.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">No matches found.</div>
-              ) : (
-                <Table>
-                  <TableBody>
-                    {filteredMedicines.map(med => (
-                      <TableRow key={med.batch_id} className="cursor-pointer hover:bg-muted" onClick={() => addToCart(med)}>
-                        <TableCell className="font-medium">{med.medicine_name}</TableCell>
-                        <TableCell>Batch: {med.batch_number}</TableCell>
-                        <TableCell>Stock: {med.stock}</TableCell>
-                        <TableCell>₹{med.selling_price}</TableCell>
-                        <TableCell>
-                          <Button size="sm" variant="ghost"><Plus className="w-4 h-4" /></Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="flex-1 flex flex-col overflow-hidden">
-          <CardHeader className="bg-muted/50 py-3">
-            <CardTitle className="text-lg flex items-center"><ShoppingCart className="w-5 h-5 mr-2" /> Current Cart</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 p-0 overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="w-24">Qty</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cart.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                      Cart is empty. Search to add medicines.
-                    </TableCell>
-                  </TableRow>
+        {/* RIGHT COLUMN: Sidebar (Customer, Payment, Totals) */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
+            
+            <div className="p-5 flex-1 space-y-6">
+              
+              {/* Customer Section */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Customer</h3>
+                </div>
+                
+                {selectedCustomer ? (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          <h4 className="font-bold text-slate-800">{selectedCustomer.name}</h4>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{selectedCustomer.phone}</p>
+                      </div>
+                      <Badge variant="outline" className="bg-white border-primary/20 text-primary text-[10px]">
+                        Existing
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-200/60">
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Points</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedCustomer.total_points}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Orders</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedCustomer.total_orders}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Spent</p>
+                        <p className="text-sm font-bold text-slate-700">₹{selectedCustomer.total_purchase_amount.toFixed(0)}</p>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-4 bg-white hover:bg-slate-100 text-slate-600 border-slate-200 text-xs"
+                      onClick={handleChangeCustomer}
+                    >
+                      Change Customer
+                    </Button>
+                  </div>
+                ) : isWalkin ? (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                    <div className="w-10 h-10 bg-slate-200/50 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <User className="w-5 h-5 text-slate-400" />
+                    </div>
+                    <h4 className="font-bold text-slate-700">Walk-in Customer</h4>
+                    <p className="text-xs text-slate-500 mt-1 mb-4">Sale will not earn loyalty points.</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full bg-white hover:bg-slate-100 text-slate-600 border-slate-200 text-xs"
+                      onClick={handleChangeCustomer}
+                    >
+                      Change Customer
+                    </Button>
+                  </div>
                 ) : (
-                  cart.map(item => (
-                    <TableRow key={item.batch_id}>
-                      <TableCell>
-                        <div className="font-medium">{item.medicine_name}</div>
-                        <div className="text-xs text-muted-foreground">Batch: {item.batch_number}</div>
-                      </TableCell>
-                      <TableCell>₹{item.selling_price}</TableCell>
-                      <TableCell>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">Mobile Number</Label>
+                      <div className="relative">
                         <Input 
-                          type="number" 
-                          min={1} 
-                          max={item.stock} 
-                          value={item.quantity}
-                          onChange={(e: any) => updateQuantity(item.batch_id, parseInt(e.target.value) || 1)}
-                          className="h-8"
+                          placeholder="e.g. 9876543210" 
+                          value={customerPhoneInput} 
+                          onChange={e => setCustomerPhoneInput(e.target.value)}
+                          className="rounded-lg bg-white border-slate-200 font-medium"
+                          maxLength={15}
                         />
-                      </TableCell>
-                      <TableCell>₹{(item.selling_price * item.quantity).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => removeFromCart(item.batch_id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        {isSearchingCustomer && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {!isSearchingCustomer && cleanPhoneLength >= 10 && !searchedCustomer && (
+                      <div className="animate-in fade-in slide-in-from-top-1 bg-red-50 border border-red-100 p-3 rounded-lg flex flex-col gap-3">
+                        <div className="flex gap-2">
+                          <Info className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                          <p className="text-xs text-red-700 font-medium leading-tight">Customer not found.</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            className="flex-1 text-xs h-8 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                            onClick={() => setIsWalkin(true)}
+                          >
+                            Walk-in
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="flex-1 text-xs h-8 bg-primary hover:bg-primary/90 text-white"
+                            onClick={() => setIsCustomerModalOpen(true)}
+                          >
+                            + Add Customer
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+              </section>
 
-      {/* Right side: Summary and Checkout */}
-      <div className="w-full lg:w-96 flex flex-col space-y-4">
-        <Card className="flex-1">
-          <CardHeader>
-            <CardTitle>Checkout Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <Label>Customer Profile</Label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={customerId}
-                onChange={(e) => {
-                  setCustomerId(e.target.value);
-                  setPointsRedeemed(0);
-                }}
+              <hr className="border-slate-100 border-dashed" />
+
+              {/* Discount Section */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Tag className="w-3.5 h-3.5 text-slate-400" />
+                  <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Discount</h3>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <IndianRupee className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <Input 
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={discountAmount || ''} 
+                    onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                    className="rounded-lg bg-white border-slate-200 pl-8"
+                  />
+                </div>
+              </section>
+
+              <hr className="border-slate-100 border-dashed" />
+
+              {/* Payment Method */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                  <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Payment Method</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'cash' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    onClick={() => setPaymentMethod('cash')}
+                  >
+                    <Banknote className="w-4 h-4" /> Cash
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'card' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    onClick={() => setPaymentMethod('card')}
+                  >
+                    <CreditCard className="w-4 h-4" /> Card
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'upi' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    onClick={() => setPaymentMethod('upi')}
+                  >
+                    <span className="font-bold text-xs tracking-wider">UPI</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'credit' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    onClick={() => setPaymentMethod('credit')}
+                  >
+                    <HandCoins className="w-4 h-4" /> Credit
+                  </Button>
+                </div>
+              </section>
+
+            </div>
+
+            {/* Totals & Submit */}
+            <div className="bg-slate-50 p-5 border-t border-slate-200">
+              <div className="space-y-2 mb-4 text-sm text-slate-600">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span className="font-medium">₹{subtotal.toFixed(2)}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-red-500">
+                    <span>Discount</span>
+                    <span>-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="border-b border-dashed border-slate-300 my-2"></div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="font-bold text-slate-800 tracking-wider text-xs">TOTAL</span>
+                  <span className="text-3xl font-bold text-[#0B3B2C]">₹{grandTotal.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <Button 
+                className="w-full h-14 rounded-xl bg-[#0B3B2C] hover:bg-[#07261d] text-white font-bold text-lg shadow-sm"
+                disabled={cart.length === 0 || createSaleMutation.isPending}
+                onClick={() => createSaleMutation.mutate()}
               >
-                <option value="">-- Walk-in Customer --</option>
-                {customersData?.map(c => (
-                  <option key={c.id} value={c.id.toString()}>{c.name} ({c.phone})</option>
-                ))}
-              </select>
+                {createSaleMutation.isPending ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
+                ) : (
+                  <>Complete sale</>
+                )}
+              </Button>
             </div>
             
-            {!customerId && (
-              <div className="space-y-2">
-                <Label>Walk-in Name (Optional)</Label>
-                <Input 
-                  placeholder="Enter name" 
-                  value={customerName}
-                  onChange={(e: any) => setCustomerName(e.target.value)}
-                />
-              </div>
-            )}
-            
-            {selectedCustomer && (
-              <div className="bg-primary/5 p-3 rounded-md border border-primary/20 space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="font-medium flex items-center"><Award className="w-4 h-4 mr-1 text-primary"/> Available Points</span>
-                  <span className="font-bold">{selectedCustomer.total_points} pts</span>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Redeem Points (Max 1000)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={Math.min(selectedCustomer.total_points, 1000)}
-                    value={pointsRedeemed || ''}
-                    onChange={(e: any) => setPointsRedeemed(parseInt(e.target.value) || 0)}
-                    className="h-8 text-sm"
-                  />
-                  {pointsRedeemed > 0 && (
-                    <p className="text-xs text-primary text-right">
-                      -₹{(pointsRedeemed * POINT_VALUE).toFixed(2)} savings
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            <div className="space-y-2 pt-2">
-              <Label>Manual Discount (₹)</Label>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Add Customer Modal */}
+      <Dialog open={isCustomerModalOpen} onOpenChange={setIsCustomerModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create Customer</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Mobile Number</Label>
               <Input 
-                type="number" 
-                min={0}
-                value={discountAmount || ''}
-                onChange={(e: any) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                value={customerPhoneInput} 
+                disabled 
+                className="bg-slate-50 text-slate-500 font-medium"
               />
             </div>
-
-            <div className="border-t pt-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal</span>
-                <span>₹{subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-destructive">
-                <span>Manual Discount</span>
-                <span>-₹{discountAmount.toFixed(2)}</span>
-              </div>
-              {loyaltyDiscount > 0 && (
-                <div className="flex justify-between text-sm text-primary">
-                  <span>Loyalty Discount</span>
-                  <span>-₹{loyaltyDiscount.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-bold text-xl pt-3 border-t">
-                <span>Grand Total</span>
-                <span className="text-primary">₹{grandTotal.toFixed(2)}</span>
-              </div>
+            <div className="grid gap-2">
+              <Label>Name *</Label>
+              <Input 
+                value={newCustomerName} 
+                onChange={(e) => setNewCustomerName(e.target.value)} 
+                placeholder="Customer Name"
+                autoFocus
+              />
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              className="w-full h-12 text-lg" 
-              onClick={handleCheckout} 
-              disabled={cart.length === 0 || createSaleMutation.isPending}
-            >
-              {createSaleMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              ) : (
-                <Receipt className="w-5 h-5 mr-2" />
-              )}
-              Complete Sale
+            <div className="grid gap-2">
+              <Label>Email (Optional)</Label>
+              <Input 
+                type="email"
+                value={newCustomerEmail} 
+                onChange={(e) => setNewCustomerEmail(e.target.value)} 
+                placeholder="customer@example.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Address (Optional)</Label>
+              <Input 
+                value={newCustomerAddress} 
+                onChange={(e) => setNewCustomerAddress(e.target.value)} 
+                placeholder="Customer Address"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCustomerModalOpen(false)}>
+              Cancel
             </Button>
-          </CardFooter>
-        </Card>
-      </div>
+            <Button 
+              onClick={() => createCustomerMutation.mutate()}
+              disabled={!newCustomerName.trim() || createCustomerMutation.isPending}
+            >
+              {createCustomerMutation.isPending ? 'Saving...' : 'Save Customer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
-

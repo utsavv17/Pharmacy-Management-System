@@ -15,6 +15,7 @@ class PurchaseService:
             invoice_number = f"PUR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
             purchase = Purchase(
                 invoice_number=invoice_number,
+                supplier_id=data.supplier_id,
                 supplier_name=data.supplier_name,
                 purchase_date=data.purchase_date,
                 total_amount=0,

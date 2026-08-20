@@ -6,9 +6,10 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Receipt, Search, RotateCcw, AlertTriangle, Download } from 'lucide-react';
+import { Receipt, Search, RotateCcw, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export const SalesHistoryPage = () => {
   const [search, setSearch] = useState('');
@@ -42,87 +43,98 @@ export const SalesHistoryPage = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'COMPLETED':
-        return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Completed</Badge>;
+        return <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 font-bold uppercase tracking-wider text-[10px]">Completed</Badge>;
       case 'PARTIALLY_RETURNED':
-        return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-700">Partial Return</Badge>;
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold uppercase tracking-wider text-[10px]">Partial Return</Badge>;
       case 'FULLY_RETURNED':
-        return <Badge variant="destructive">Fully Returned</Badge>;
+        return <Badge variant="outline" className="text-red-700 border-red-200 bg-red-50 font-bold uppercase tracking-wider text-[10px]">Fully Returned</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="text-slate-600 border-slate-200 font-bold uppercase tracking-wider text-[10px]">{status}</Badge>;
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sales & Returns</h1>
-          <p className="text-muted-foreground mt-1">View transaction history and process refunds</p>
+    <div className="w-full space-y-6 pb-10">
+      <PageHeader
+        title="Sales & Returns"
+        description="View transaction history and process refunds"
+        icon={Receipt}
+      />
+
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+        <div className="p-4 border-b border-slate-100 bg-white flex justify-between items-center">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              className="pl-9 bg-slate-50 border-slate-200 rounded-xl w-full" 
+              placeholder="Search by invoice number..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-center space-x-2 bg-card p-4 rounded-lg border shadow-sm">
-        <Search className="w-5 h-5 text-muted-foreground" />
-        <Input 
-          placeholder="Search by invoice number..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="border-0 focus-visible:ring-0 shadow-none"
-        />
-      </div>
-
-      <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Invoice</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total Amount</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center h-24">Loading sales...</TableCell>
+        <div className="overflow-x-auto flex-1">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                <TableHead className="font-semibold text-slate-600">Invoice</TableHead>
+                <TableHead className="font-semibold text-slate-600">Date</TableHead>
+                <TableHead className="font-semibold text-slate-600">Customer</TableHead>
+                <TableHead className="font-semibold text-slate-600">Status</TableHead>
+                <TableHead className="font-semibold text-slate-600 text-right">Total Amount</TableHead>
+                <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
               </TableRow>
-            ) : salesData?.data?.items?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">No sales found.</TableCell>
-              </TableRow>
-            ) : (
-              salesData?.data?.items?.map((sale: any) => (
-                <TableRow key={sale.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center">
-                      <Receipt className="w-4 h-4 mr-2 text-muted-foreground" />
-                      {sale.invoice_number}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(sale.created_at).toLocaleDateString('en-GB', { 
-                      day: '2-digit', month: 'short', year: 'numeric', 
-                      hour: '2-digit', minute: '2-digit' 
-                    })}
-                  </TableCell>
-                  <TableCell>{sale.customer_name || 'Walk-in Customer'}</TableCell>
-                  <TableCell>{getStatusBadge(sale.status)}</TableCell>
-                  <TableCell className="text-right font-bold">₹{sale.total_amount.toFixed(2)}</TableCell>
-                  <TableCell className="text-right flex items-center justify-end space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(sale.id, sale.invoice_number)}>
-                      <Download className="w-4 h-4 mr-2" /> Invoice
-                    </Button>
-                    <Button variant="outline" size="sm" disabled={sale.status === 'FULLY_RETURNED'}>
-                      <RotateCcw className="w-4 h-4 mr-2" /> Refund
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12">
+                    <div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : salesData?.data?.items?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                    No sales found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                salesData?.data?.items?.map((sale: any) => (
+                  <TableRow key={sale.id} className="hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center mr-3 border border-slate-100">
+                          <Receipt className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <span className="font-mono text-sm font-semibold text-slate-700">{sale.invoice_number}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-slate-600">
+                      {new Date(sale.created_at).toLocaleDateString('en-GB', { 
+                        day: '2-digit', month: 'short', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit' 
+                      })}
+                    </TableCell>
+                    <TableCell className="font-medium text-slate-800">{sale.customer_name || 'Walk-in Customer'}</TableCell>
+                    <TableCell>{getStatusBadge(sale.status)}</TableCell>
+                    <TableCell className="text-right font-bold text-[#0B3B2C]">₹{sale.total_amount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(sale.id, sale.invoice_number)} className="rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary">
+                          <Download className="w-4 h-4 mr-2" /> Invoice
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={sale.status === 'FULLY_RETURNED'} className="rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-red-600">
+                          <RotateCcw className="w-4 h-4 mr-2" /> Refund
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

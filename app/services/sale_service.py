@@ -18,8 +18,28 @@ class SaleService:
         # 1) Validate Customer and Loyalty Redemption
         loyalty_discount = 0.0
         customer = None
+        
+        # Resolve or create customer if phone is provided but no ID
+        if not data.customer_id and getattr(data, 'customer_phone', None):
+            customer = db.query(Customer).filter(
+                Customer.phone == data.customer_phone, 
+                Customer.organization_id == org_id
+            ).first()
+            if not customer:
+                customer = Customer(
+                    name=data.customer_name or "Walk-in Customer",
+                    phone=data.customer_phone,
+                    email=getattr(data, 'customer_email', None),
+                    address=getattr(data, 'customer_address', None),
+                    organization_id=org_id
+                )
+                db.add(customer)
+                db.flush()
+            data.customer_id = customer.id
+
         if data.customer_id:
-            customer = db.query(Customer).filter(Customer.id == data.customer_id, Customer.organization_id == org_id).first()
+            if not customer:
+                customer = db.query(Customer).filter(Customer.id == data.customer_id, Customer.organization_id == org_id).first()
             if not customer:
                 raise HTTPException(status_code=404, detail="Customer not found")
                 
@@ -27,8 +47,8 @@ class SaleService:
         invoice_number = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         sale = Sale(
             invoice_number=invoice_number,
-            customer_id=data.customer_id if data.customer_id else None,
-            customer_name=data.customer_name if data.customer_name else ("Walk-in Customer" if not customer else customer.name),
+            customer_id=data.customer_id,
+            customer_name=customer.name if customer else (data.customer_name or "Walk-in Customer"),
             sale_date=data.sale_date or date.today(),
             subtotal=0,
             discount_amount=data.discount_amount,
@@ -98,7 +118,7 @@ class SaleService:
         # 3) Process Loyalty Redemption
         if sale.customer_id and sale.points_redeemed > 0:
             final_before_loyalty = total_amount - sale.discount_amount
-            loyalty_discount = LoyaltyService.validate_redemption(db, customer, sale.points_redeemed, final_before_loyalty)
+            loyalty_discount = LoyaltyService.validate_redemption(db, customer, sale.points_redeemed, final_before_loyalty, org_id)
             LoyaltyService.redeem_points(db, sale.customer_id, sale.points_redeemed, sale.id, org_id)
 
         # 4) Update sale amounts
@@ -109,9 +129,9 @@ class SaleService:
         if sale.customer_id:
             # We calculate points on the actual amount paid
             eligible_amount = sale.total_amount
-            points_earned = LoyaltyService.calculate_eligible_points(db, eligible_amount)
+            points_earned = LoyaltyService.calculate_eligible_points(db, eligible_amount, org_id)
             if points_earned > 0:
-                LoyaltyService.award_points(db, sale.customer_id, points_earned, sale.id)
+                LoyaltyService.award_points(db, sale.customer_id, points_earned, sale.id, org_id)
                 sale.points_earned = points_earned
                 
             # Update customer aggregates

@@ -10,4 +10,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    host: true, // Listen on all addresses
+    watch: {
+      usePolling: true, // Needed for Docker on Windows/Mac
+    },
+  },
 })

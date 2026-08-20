@@ -11,6 +11,9 @@ class SaleCreate(BaseModel):
     invoice_number: str | None = None
     customer_id: int | None = None
     customer_name: str | None = None
+    customer_phone: str | None = None
+    customer_email: str | None = None
+    customer_address: str | None = None
     sale_date: date | None = None
     discount_amount: float = 0
     points_redeemed: int = 0
