@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 import logging
 
 from app.core.config import get_settings
-from app.utils.settings import initialize_settings
+
 from app.db.db import get_db
 import app.db.base # Ensures all models are registered for SQLAlchemy mapper
 
@@ -46,6 +46,8 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
+import os
+
 origins = [
     "http://localhost",
     "http://localhost:3000",
@@ -54,6 +56,8 @@ origins = [
     "https://develop.d393xravvewyoy.amplifyapp.com",
     "http://54.179.188.174"
 ]
+if "FRONTEND_URL" in os.environ:
+    origins.append(os.environ["FRONTEND_URL"])
 
 # Security Middleware (order matters - applied in reverse)
 # 1. Request logging (first to log everything)
@@ -78,13 +82,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+allowed_hosts = ["localhost", "127.0.0.1", "54.179.188.174", "develop.d393xravvewyoy.amplifyapp.com"]
+if "VERCEL_URL" in os.environ:
+    allowed_hosts.append(os.environ["VERCEL_URL"])
+
 # 5. Trusted host (validate Host header)
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "54.179.188.174", "develop.d393xravvewyoy.amplifyapp.com"]
+    allowed_hosts=allowed_hosts
 )
 
-initialize_settings()
+
 app_settings = get_settings()
 
 app.include_router(auth.router)
