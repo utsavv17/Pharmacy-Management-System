@@ -82,7 +82,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-allowed_hosts = ["localhost", "127.0.0.1", "54.179.188.174", "develop.d393xravvewyoy.amplifyapp.com"]
+allowed_hosts = [
+    "localhost",
+    "127.0.0.1",
+    "54.179.188.174",
+    "develop.d393xravvewyoy.amplifyapp.com",
+    "pharmacy-management-system-neon-psi.vercel.app"
+]
 if "VERCEL_URL" in os.environ:
     allowed_hosts.append(os.environ["VERCEL_URL"])
 
