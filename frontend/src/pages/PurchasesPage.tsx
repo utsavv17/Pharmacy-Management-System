@@ -11,21 +11,29 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Search, Trash2, Eye, ArrowLeft, Download, ShoppingBag, FileUp } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { InvoiceImportModal } from '@/features/purchases/InvoiceImportModal';
+import { Pagination } from '@/components/ui/pagination';
 
 export const PurchasesPage = () => {
   const [view, setView] = useState<'list' | 'create'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [viewingPurchase, setViewingPurchase] = useState<Purchase | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: purchases, isLoading: isLoadingPurchases } = useQuery({
-    queryKey: ['purchases'],
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
+
+  const { data: purchasesData, isLoading: isLoadingPurchases } = useQuery({
+    queryKey: ['purchases', page, limit, searchTerm],
     queryFn: async () => {
-      const response = await apiClient.get('/purchases/');
-      return response.data.data.items as Purchase[];
+      const response = await apiClient.get('/purchases/', { params: { page, limit, search: searchTerm } });
+      return response.data.data;
     },
   });
 
@@ -64,11 +72,6 @@ export const PurchasesPage = () => {
   const [supplierId, setSupplierId] = useState<string>('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [items, setItems] = useState<Partial<PurchaseItem>[]>([]);
-
-  const filteredPurchases = purchases?.filter(p => 
-    (p.invoice_number?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
-    (p.supplier_name && p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   const handleAddItem = () => {
     setItems([...items, {
@@ -275,7 +278,7 @@ export const PurchasesPage = () => {
               className="pl-9 bg-slate-50 border-slate-200 rounded-xl w-full" 
               placeholder="Search by invoice or supplier..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -298,14 +301,14 @@ export const PurchasesPage = () => {
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
-              ) : filteredPurchases?.length === 0 ? (
+              ) : purchasesData?.items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-12 text-slate-500">
                     No purchases found.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPurchases?.map((purchase) => (
+                purchasesData?.items?.map((purchase: Purchase) => (
                   <TableRow key={purchase.id} className="hover:bg-slate-50/50 transition-colors">
                     <TableCell className="font-mono text-sm font-semibold text-slate-700">{purchase.invoice_number}</TableCell>
                     <TableCell className="font-medium text-slate-800">{purchase.supplier_name}</TableCell>
@@ -322,6 +325,21 @@ export const PurchasesPage = () => {
             </TableBody>
           </Table>
         </div>
+        {purchasesData?.pagination && (
+          <div className="border-t border-slate-100">
+            <Pagination
+              page={purchasesData.pagination.page}
+              totalPages={purchasesData.pagination.pages}
+              total={purchasesData.pagination.total}
+              limit={purchasesData.pagination.limit}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Details Dialog */}

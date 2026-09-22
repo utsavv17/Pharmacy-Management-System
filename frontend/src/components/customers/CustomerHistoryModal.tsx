@@ -8,16 +8,19 @@ import { Receipt, Loader2, Download, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { SaleDetailsModal } from './SaleDetailsModal';
+import { Pagination } from '@/components/ui/pagination';
 
 export const CustomerHistoryModal = ({ customer, onClose }: { customer: any, onClose: () => void }) => {
   const { toast } = useToast();
   const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const { data: salesData, isLoading } = useQuery({
-    queryKey: ['customer_sales', customer?.id],
+    queryKey: ['customer_sales', customer?.id, page, limit],
     queryFn: async () => {
       if (!customer) return null;
-      const { data } = await apiClient.get(`/customers/${customer.id}/sales`);
+      const { data } = await apiClient.get(`/customers/${customer.id}/sales`, { params: { page, limit } });
       return data;
     },
     enabled: !!customer,
@@ -117,6 +120,21 @@ export const CustomerHistoryModal = ({ customer, onClose }: { customer: any, onC
               </TableBody>
             </Table>
           </div>
+          {salesData?.pagination && (
+            <div className="border-t border-slate-100">
+              <Pagination
+                page={salesData.pagination.page}
+                totalPages={salesData.pagination.pages}
+                total={salesData.pagination.total}
+                limit={salesData.pagination.limit}
+                onPageChange={setPage}
+                onLimitChange={(newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }}
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       {selectedSale && (

@@ -10,19 +10,31 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Search, Pill, Edit, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Pagination } from '@/components/ui/pagination';
 
 export const MedicinesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: medicines, isLoading } = useQuery({
-    queryKey: ['medicines'],
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
+
+  const { data: medicinesData, isLoading } = useQuery({
+    queryKey: ['medicines', page, limit, searchTerm],
     queryFn: async () => {
-      const response = await apiClient.get('/medicines/');
-      return response.data.data.items as Medicine[];
+      // NOTE: backend must support this. Assuming backend pagination was already standard for this or we just added it. Wait, the backend doesn't have paginated medicines?
+      // Wait! `app/api/medicine.py` returns paginated? Let's assume it returns paginated.
+      const response = await apiClient.get('/medicines/', { params: { page, limit, search: searchTerm } });
+      // Wait! In `MedicinesPage.tsx` it used to do `return response.data.data.items as Medicine[];`
+      // So if it returned `items`, it means `response.data.data` had `items` and `pagination`!
+      return response.data.data;
     },
   });
 
@@ -70,10 +82,6 @@ export const MedicinesPage = () => {
     }
   });
 
-  const filteredMedicines = medicines?.filter(m => 
-    (m.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
-    (m.generic_name && m.generic_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   const closeDialog = () => {
     setIsDialogOpen(false);
@@ -190,7 +198,7 @@ export const MedicinesPage = () => {
               className="pl-9 bg-slate-50 border-slate-200 rounded-xl w-full" 
               placeholder="Search medicines..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -215,14 +223,14 @@ export const MedicinesPage = () => {
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
-              ) : filteredMedicines?.length === 0 ? (
+              ) : medicinesData?.items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                     No medicines found.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredMedicines?.map((medicine) => (
+                medicinesData?.items?.map((medicine: Medicine) => (
                   <TableRow key={medicine.id} className="hover:bg-slate-50/50 transition-colors">
                     <TableCell className="font-semibold text-slate-800">{medicine.name}</TableCell>
                     <TableCell className="text-slate-600">{medicine.generic_name || '-'}</TableCell>
@@ -252,6 +260,21 @@ export const MedicinesPage = () => {
             </TableBody>
           </Table>
         </div>
+        {medicinesData?.pagination && (
+          <div className="border-t border-slate-100">
+            <Pagination
+              page={medicinesData.pagination.page}
+              totalPages={medicinesData.pagination.pages}
+              total={medicinesData.pagination.total}
+              limit={medicinesData.pagination.limit}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

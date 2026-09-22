@@ -31,8 +31,7 @@ export const DashboardLayout = () => {
     { name: 'Inventory', href: '/inventory', icon: Package },
     { name: 'Suppliers', href: '/suppliers', icon: Truck },
     { name: 'Purchases', href: '/purchases', icon: PackagePlus },
-    { name: 'Sales & Returns', href: '/sales', icon: Receipt },
-    { name: 'Reports', href: '/reports', icon: TrendingUp },
+    { name: 'Sales & Reports', href: '/reports', icon: TrendingUp },
   ];
 
   if (user?.role === 'super_admin') {

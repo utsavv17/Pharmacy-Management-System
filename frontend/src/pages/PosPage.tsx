@@ -34,7 +34,9 @@ interface CartItem extends POSMedicine {
 export const PosPage = () => {
   // State
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchSelectedIndex, setSearchSelectedIndex] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [lastGeneratedSale, setLastGeneratedSale] = useState<any>(null);
   
   // Customer Flow State
   const [customerPhoneInput, setCustomerPhoneInput] = useState('');
@@ -52,25 +54,14 @@ export const PosPage = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit'>('cash');
   
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const customerInputRef = useRef<HTMLInputElement>(null);
+  const paymentRef = useRef<HTMLButtonElement>(null);
+  const quantityRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
 
-  // Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-      if (e.key === 'Escape') {
-        setSearchTerm('');
-        searchInputRef.current?.blur();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+
 
   // Debounce phone input
   useEffect(() => {
@@ -177,7 +168,12 @@ export const PosPage = () => {
       setCart([...cart, { ...med, quantity: 1 }]);
     }
     setSearchTerm('');
-    searchInputRef.current?.focus();
+    
+    // Focus quantity input for this row after a short delay
+    setTimeout(() => {
+      quantityRefs.current[med.batch_id]?.focus();
+      quantityRefs.current[med.batch_id]?.select();
+    }, 50);
   };
 
   const removeFromCart = (batchId: number) => {
@@ -247,7 +243,9 @@ export const PosPage = () => {
       queryClient.invalidateQueries({ queryKey: ['dashboardToday'] });
       
       resetPos();
+      setTimeout(() => searchInputRef.current?.focus(), 100);
       
+      setLastGeneratedSale(data.data);
       setTimeout(() => {
         handleDownloadInvoiceDirectly(data.data);
       }, 500);
@@ -256,6 +254,65 @@ export const PosPage = () => {
       toast({ title: 'Transaction Failed', description: error.response?.data?.detail || 'Failed to complete sale', variant: 'destructive' });
     }
   });
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F2: New Bill / Reset
+      if (e.key === 'F2') {
+        e.preventDefault();
+        if (cart.length > 0) {
+            if (window.confirm('Are you sure you want to clear the current bill?')) {
+                resetPos();
+                setTimeout(() => searchInputRef.current?.focus(), 50);
+            }
+        } else {
+            resetPos();
+            setTimeout(() => searchInputRef.current?.focus(), 50);
+        }
+      }
+      // F3: Medicine Search
+      if (e.key === 'F3') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        setTimeout(() => searchInputRef.current?.select(), 10);
+      }
+      // F4: Customer Search
+      if (e.key === 'F4') {
+        e.preventDefault();
+        customerInputRef.current?.focus();
+        setTimeout(() => customerInputRef.current?.select(), 10);
+      }
+      // F8: Payment
+      if (e.key === 'F8') {
+        e.preventDefault();
+        paymentRef.current?.focus();
+      }
+      // F9 or Ctrl+Enter: Complete Bill
+      if (e.key === 'F9' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+        e.preventDefault();
+        if (cart.length > 0 && !createSaleMutation.isPending) {
+          createSaleMutation.mutate();
+        }
+      }
+      // F10: Print Invoice
+      if (e.key === 'F10') {
+        e.preventDefault();
+        if (lastGeneratedSale) {
+          handleDownloadInvoiceDirectly(lastGeneratedSale);
+        } else {
+          toast({ title: 'No invoice available', description: 'Complete a sale first to print.' });
+        }
+      }
+      // Esc: Close dropdown
+      if (e.key === 'Escape') {
+        setSearchTerm('');
+        searchInputRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart, createSaleMutation, lastGeneratedSale, resetPos]);
 
   return (
     <div className="w-full">
@@ -283,8 +340,25 @@ export const PosPage = () => {
               type="text"
               placeholder="Search medicine, SKU, or batch..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-slate-200 shadow-sm rounded-xl py-3 pl-12 pr-16 text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setSearchSelectedIndex(0);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setSearchSelectedIndex((prev) => Math.min(prev + 1, filteredMedicines.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setSearchSelectedIndex((prev) => Math.max(prev - 1, 0));
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (filteredMedicines[searchSelectedIndex] && filteredMedicines[searchSelectedIndex].stock > 0) {
+                    addToCart(filteredMedicines[searchSelectedIndex]);
+                  }
+                }
+              }}
+              className="w-full bg-white border border-slate-200 shadow-sm rounded-xl py-3 pl-12 pr-16 text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono text-slate-500 font-medium">
@@ -298,10 +372,17 @@ export const PosPage = () => {
                 {isMedicinesLoading ? (
                   <div className="p-4 text-center text-slate-500"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
                 ) : filteredMedicines.length > 0 ? (
-                  filteredMedicines.map(med => (
+                  filteredMedicines.map((med, index) => (
                     <div 
                       key={med.batch_id} 
-                      className={`p-3 border-b border-slate-100 flex items-center justify-between cursor-pointer transition-colors ${med.stock > 0 ? 'hover:bg-slate-50' : 'opacity-60 bg-slate-50'}`}
+                      className={`p-3 border-b border-slate-100 flex items-center justify-between cursor-pointer transition-colors ${
+                        med.stock > 0 
+                          ? (index === searchSelectedIndex ? 'bg-slate-100 ring-2 ring-primary/50' : 'hover:bg-slate-50') 
+                          : 'opacity-60 bg-slate-50'
+                      }`}
+                      ref={(el) => {
+                        if (index === searchSelectedIndex && el) el.scrollIntoView({ block: 'nearest' });
+                      }}
                       onClick={() => med.stock > 0 && addToCart(med)}
                     >
                       <div>
@@ -373,7 +454,22 @@ export const PosPage = () => {
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
-                            <span className="w-6 text-center font-medium">{item.quantity}</span>
+                            <Input 
+                              ref={(el) => { quantityRefs.current[item.batch_id] = el; }}
+                              type="number"
+                              min="1"
+                              max={item.stock}
+                              className="w-16 h-8 text-center font-medium p-1 bg-white border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              value={item.quantity}
+                              onChange={(e) => updateQuantity(item.batch_id, parseInt(e.target.value) || 0)}
+                              onFocus={(e) => e.target.select()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  searchInputRef.current?.focus();
+                                }
+                              }}
+                            />
                             <Button 
                               variant="outline" 
                               size="icon" 
@@ -395,7 +491,7 @@ export const PosPage = () => {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                            className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors focus:ring-2 focus:ring-red-200 focus:outline-none"
                             onClick={() => removeFromCart(item.batch_id)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -486,6 +582,7 @@ export const PosPage = () => {
                       <div className="relative">
                         <Input 
                           placeholder="e.g. 9876543210" 
+                          ref={customerInputRef}
                           value={customerPhoneInput} 
                           onChange={e => setCustomerPhoneInput(e.target.value)}
                           className="rounded-lg bg-white border-slate-200 font-medium"
@@ -564,34 +661,41 @@ export const PosPage = () => {
                   <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Payment Method</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'cash' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                    onClick={() => setPaymentMethod('cash')}
-                  >
-                    <Banknote className="w-4 h-4" /> Cash
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'card' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                    onClick={() => setPaymentMethod('card')}
-                  >
-                    <CreditCard className="w-4 h-4" /> Card
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'upi' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                    onClick={() => setPaymentMethod('upi')}
-                  >
-                    <span className="font-bold text-xs tracking-wider">UPI</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className={`rounded-lg justify-center gap-2 transition-colors ${paymentMethod === 'credit' ? 'bg-[#E8F0EB] text-primary border-primary/30' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                    onClick={() => setPaymentMethod('credit')}
-                  >
-                    <HandCoins className="w-4 h-4" /> Credit
-                  </Button>
+                  {[
+                    { id: 'cash', label: 'Cash', icon: <Banknote className="w-4 h-4" /> },
+                    { id: 'card', label: 'Card', icon: <CreditCard className="w-4 h-4" /> },
+                    { id: 'upi', label: 'UPI', icon: <span className="font-bold text-xs tracking-wider">UPI</span> },
+                    { id: 'credit', label: 'Credit', icon: <HandCoins className="w-4 h-4" /> }
+                  ].map((method, idx) => (
+                    <Button
+                      key={method.id}
+                      ref={idx === 0 ? paymentRef : undefined}
+                      variant="outline"
+                      className={`rounded-lg justify-center gap-2 transition-colors focus:ring-2 focus:ring-primary/40 focus:outline-none ${paymentMethod === method.id ? 'bg-[#E8F0EB] text-primary border-primary/30 ring-2 ring-primary/20' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                      onClick={() => setPaymentMethod(method.id as any)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setPaymentMethod(method.id as any);
+                        } else if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+                          e.preventDefault();
+                          const buttons = e.currentTarget.parentElement?.querySelectorAll('button');
+                          if (buttons) {
+                            let nextIdx = idx;
+                            if (e.key === 'ArrowRight') nextIdx = idx + 1;
+                            if (e.key === 'ArrowLeft') nextIdx = idx - 1;
+                            if (e.key === 'ArrowDown') nextIdx = idx + 2;
+                            if (e.key === 'ArrowUp') nextIdx = idx - 2;
+                            if (nextIdx >= 0 && nextIdx < buttons.length) {
+                                (buttons[nextIdx] as HTMLElement).focus();
+                            }
+                          }
+                        }
+                      }}
+                    >
+                      {method.icon} {method.label !== 'UPI' ? method.label : ''}
+                    </Button>
+                  ))}
                 </div>
               </section>
 

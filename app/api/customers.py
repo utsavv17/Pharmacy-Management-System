@@ -9,26 +9,26 @@ from app.schemas.customer import CustomerCreate, CustomerUpdate, CustomerRespons
 from app.schemas.sale import SaleResponse
 from app.schemas.reward import RewardTransactionResponse
 from app.services.customer_service import CustomerService
+from app.utils.pagination import Paginator
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
 
 @router.get("/", response_model=dict)
 def get_customers(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    limit: int = 20,
     search: str = None,
     active_only: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     org_id: int = Depends(get_current_organization)
 ):
-    customers, total = CustomerService.get_customers(db, org_id, skip=skip, limit=limit, search=search, active_only=active_only)
-    # converting to schema here so we can return total
+    query = CustomerService.get_customers_query(db, org_id, search=search, active_only=active_only)
+    paginated = Paginator.paginate(query, page, limit)
+    
     return {
-        "items": [CustomerResponse.model_validate(c) for c in customers],
-        "total": total,
-        "skip": skip,
-        "limit": limit
+        "items": [CustomerResponse.model_validate(c) for c in paginated["items"]],
+        "pagination": paginated["pagination"]
     }
 
 @router.get("/search", response_model=CustomerResponse)
@@ -81,29 +81,33 @@ def delete_customer(
 @router.get("/{customer_id}/sales", response_model=dict)
 def get_customer_sales(
     customer_id: int,
-    skip: int = 0,
-    limit: int = 50,
+    page: int = 1,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     org_id: int = Depends(get_current_organization)
 ):
-    sales, total = CustomerService.get_customer_sales(db, customer_id, org_id, skip=skip, limit=limit)
+    query = CustomerService.get_customer_sales_query(db, customer_id, org_id)
+    paginated = Paginator.paginate(query, page, limit)
+    
     return {
-        "items": [SaleResponse.model_validate(s) for s in sales],
-        "total": total
+        "items": [SaleResponse.model_validate(s) for s in paginated["items"]],
+        "pagination": paginated["pagination"]
     }
 
 @router.get("/{customer_id}/rewards", response_model=dict)
 def get_customer_rewards(
     customer_id: int,
-    skip: int = 0,
-    limit: int = 50,
+    page: int = 1,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     org_id: int = Depends(get_current_organization)
 ):
-    rewards, total = CustomerService.get_customer_rewards(db, customer_id, org_id, skip=skip, limit=limit)
+    query = CustomerService.get_customer_rewards_query(db, customer_id, org_id)
+    paginated = Paginator.paginate(query, page, limit)
+    
     return {
-        "items": [RewardTransactionResponse.model_validate(r) for r in rewards],
-        "total": total
+        "items": [RewardTransactionResponse.model_validate(r) for r in paginated["items"]],
+        "pagination": paginated["pagination"]
     }

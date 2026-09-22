@@ -12,9 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Users, Search, Plus, Phone, Mail, Award, History, Loader2, Edit, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CustomerHistoryModal } from '@/components/customers/CustomerHistoryModal';
+import { Pagination } from '@/components/ui/pagination';
 
 export const CustomersPage = () => {
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedHistoryCustomer, setSelectedHistoryCustomer] = useState<any>(null);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
@@ -22,10 +25,15 @@ export const CustomersPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    setPage(1); // Reset to page 1 on search
+  };
+
   const { data: customersData, isLoading } = useQuery({
-    queryKey: ['customers', search],
+    queryKey: ['customers', page, limit, search],
     queryFn: async () => {
-      const { data } = await apiClient.get('/customers', { params: { search } });
+      const { data } = await apiClient.get('/customers', { params: { search, page, limit } });
       return data;
     },
   });
@@ -209,7 +217,7 @@ export const CustomersPage = () => {
               className="pl-9 bg-slate-50 border-slate-200 rounded-xl w-full" 
               placeholder="Search by name or phone..." 
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -288,6 +296,22 @@ export const CustomersPage = () => {
             </TableBody>
           </Table>
         </div>
+        
+        {customersData?.pagination && (
+          <div className="border-t border-slate-100">
+            <Pagination
+              page={customersData.pagination.page}
+              totalPages={customersData.pagination.pages}
+              total={customersData.pagination.total}
+              limit={customersData.pagination.limit}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
       </div>
       
       {selectedHistoryCustomer && (

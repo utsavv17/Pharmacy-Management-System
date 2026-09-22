@@ -11,18 +11,25 @@ from app.core.security import hash_password
 
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
-@router.get("/", response_model=List[OrganizationResponse])
+from app.utils.pagination import Paginator
+
+@router.get("/", response_model=dict)
 def get_organizations(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user = Depends(require_super_admin)
 ):
     """
     Get all organizations. Only SUPER_ADMIN can view all organizations.
     """
-    orgs = db.query(Organization).order_by(Organization.created_at.desc()).offset(skip).limit(limit).all()
-    return orgs
+    query = db.query(Organization).order_by(Organization.created_at.desc())
+    paginated = Paginator.paginate(query, page, limit)
+    
+    return {
+        "items": [OrganizationResponse.model_validate(o) for o in paginated["items"]],
+        "pagination": paginated["pagination"]
+    }
 
 @router.get("/me", response_model=OrganizationResponse)
 def get_my_organization(

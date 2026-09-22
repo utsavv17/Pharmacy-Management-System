@@ -6,10 +6,12 @@ import { Loader2, Search, TrendingUp, Download, PieChart, IndianRupee } from 'lu
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Pagination } from '@/components/ui/pagination';
 
 export const ReportsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
@@ -42,12 +44,17 @@ export const ReportsPage = () => {
 
   // Fetch Sales List
   const { data: salesList, isLoading: salesLoading } = useQuery({
-    queryKey: ['reports-sales-list', searchTerm, page],
+    queryKey: ['reports-sales-list', searchTerm, page, limit],
     queryFn: async () => {
-      const response = await apiClient.get(`/reports/sales/?page=${page}&limit=20&search=${searchTerm}`);
+      const response = await apiClient.get(`/reports/sales/`, { params: { page, limit, search: searchTerm } });
       return response.data.data; // { items, pagination, year_summary }
     }
   });
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
@@ -165,7 +172,7 @@ export const ReportsPage = () => {
               className="pl-9 bg-slate-50 border-slate-200 rounded-xl w-full" 
               placeholder="Search invoice or customer..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -219,31 +226,19 @@ export const ReportsPage = () => {
         </div>
         
         {/* Pagination Controls */}
-        {salesList?.pagination && salesList.pagination.total_pages > 1 && (
-          <div className="flex items-center justify-between p-4 bg-slate-50 border-t border-slate-100">
-            <div className="text-sm font-medium text-slate-500">
-              Page <span className="text-slate-800">{page}</span> of <span className="text-slate-800">{salesList.pagination.total_pages}</span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="rounded-lg border-slate-200 bg-white"
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(salesList.pagination.total_pages, p + 1))}
-                disabled={page === salesList.pagination.total_pages}
-                className="rounded-lg border-slate-200 bg-white"
-              >
-                Next
-              </Button>
-            </div>
+        {salesList?.pagination && (
+          <div className="border-t border-slate-100">
+            <Pagination
+              page={salesList.pagination.page}
+              totalPages={salesList.pagination.pages}
+              total={salesList.pagination.total}
+              limit={salesList.pagination.limit}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
           </div>
         )}
 

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
+import datetime
 
 from app.services.inventory_service import InventoryService
 from app.core.deps import get_current_user, get_current_organization
@@ -45,8 +46,9 @@ def get_inventory_alerts(
 @router.get("/")
 def inventory_list(
     search: str | None = None,
+    status: str | None = None,
     page: int = 1,
-    limit: int = 10,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     org_id: int = Depends(get_current_organization)
@@ -75,6 +77,21 @@ def inventory_list(
             (Medicine.generic_name.ilike(s)) |
             (Batch.batch_no.ilike(s))
         )
+
+    if status and status != 'ALL':
+        today = datetime.date.today()
+        thirty_days = today + datetime.timedelta(days=30)
+        
+        if status == 'OUT_OF_STOCK':
+            query = query.filter(Batch.quantity <= 0)
+        elif status == 'EXPIRED':
+            query = query.filter(Batch.quantity > 0, Batch.expiry_date < today)
+        elif status == 'NEAR_EXPIRY':
+            query = query.filter(Batch.quantity > 0, Batch.expiry_date >= today, Batch.expiry_date <= thirty_days)
+        elif status == 'LOW_STOCK':
+            query = query.filter(Batch.quantity > 0, Batch.expiry_date > thirty_days, Batch.quantity <= Medicine.minimum_stock_level)
+        elif status == 'NORMAL':
+            query = query.filter(Batch.quantity > Medicine.minimum_stock_level, Batch.expiry_date > thirty_days)
 
     query = query.order_by(Medicine.name.asc(), Batch.expiry_date.asc())
     paginated = Paginator.paginate(query, page, limit)

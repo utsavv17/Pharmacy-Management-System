@@ -34,7 +34,7 @@ class CustomerService:
         return customer
 
     @staticmethod
-    def get_customers(db: Session, org_id: int, skip: int = 0, limit: int = 100, search: str = None, active_only: bool = False) -> Tuple[List[Customer], int]:
+    def get_customers_query(db: Session, org_id: int, search: str = None, active_only: bool = False):
         query = db.query(Customer).filter(Customer.organization_id == org_id)
         
         if active_only:
@@ -49,9 +49,7 @@ class CustomerService:
                 )
             )
             
-        total = query.count()
-        customers = query.order_by(Customer.created_at.desc()).offset(skip).limit(limit).all()
-        return customers, total
+        return query.order_by(Customer.created_at.desc())
 
     @staticmethod
     def get_customer(db: Session, customer_id: int, org_id: int) -> Customer:
@@ -105,15 +103,11 @@ class CustomerService:
         db.commit()
 
     @staticmethod
-    def get_customer_sales(db: Session, customer_id: int, org_id: int, skip: int = 0, limit: int = 50) -> Tuple[List[Sale], int]:
+    def get_customer_sales_query(db: Session, customer_id: int, org_id: int):
         query = db.query(Sale).filter(Sale.customer_id == customer_id, Sale.organization_id == org_id)
-        total = query.count()
-        sales = query.order_by(Sale.created_at.desc()).offset(skip).limit(limit).all()
-        return sales, total
+        return query.order_by(Sale.created_at.desc())
 
     @staticmethod
-    def get_customer_rewards(db: Session, customer_id: int, org_id: int, skip: int = 0, limit: int = 50) -> Tuple[List[RewardTransaction], int]:
+    def get_customer_rewards_query(db: Session, customer_id: int, org_id: int):
         query = db.query(RewardTransaction).filter(RewardTransaction.customer_id == customer_id, RewardTransaction.organization_id == org_id)
-        total = query.count()
-        rewards = query.order_by(RewardTransaction.created_at.desc()).offset(skip).limit(limit).all()
-        return rewards, total
+        return query.order_by(RewardTransaction.created_at.desc())

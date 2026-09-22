@@ -9,18 +9,25 @@ from app.schemas.plan import PlanCreate, PlanUpdate, PlanResponse
 
 router = APIRouter(prefix="/plans", tags=["Plans"])
 
-@router.get("/", response_model=List[PlanResponse])
+from app.utils.pagination import Paginator
+
+@router.get("/", response_model=dict)
 def get_plans(
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """
     Get all subscription plans. Any authenticated user can view plans (e.g. for upgrading).
     """
-    plans = db.query(Plan).offset(skip).limit(limit).all()
-    return plans
+    query = db.query(Plan)
+    paginated = Paginator.paginate(query, page, limit)
+    
+    return {
+        "items": [PlanResponse.model_validate(p) for p in paginated["items"]],
+        "pagination": paginated["pagination"]
+    }
 
 @router.get("/{plan_id}", response_model=PlanResponse)
 def get_plan(

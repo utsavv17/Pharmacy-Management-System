@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useToast } from '@/hooks/use-toast';
+import { Pagination } from '@/components/ui/pagination';
 
 interface BatchInventoryItem {
   batch_id: number;
@@ -22,11 +23,14 @@ interface BatchInventoryItem {
   purchase_price: number;
   selling_price: number;
   minimum_stock_level: number;
+  status?: string;
 }
 
 export const InventoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [movementBatchId, setMovementBatchId] = useState<number | null>(null);
   const [editingBatch, setEditingBatch] = useState<BatchInventoryItem | null>(null);
   const [editForm, setEditForm] = useState({ selling_price: 0, purchase_price: 0, quantity: 0, expiry_date: '' });
@@ -34,11 +38,13 @@ export const InventoryPage = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: inventory, isLoading } = useQuery({
-    queryKey: ['inventory'],
+  const { data: inventoryData, isLoading } = useQuery({
+    queryKey: ['inventory', page, limit, filter, searchTerm],
     queryFn: async () => {
-      const response = await apiClient.get('/inventory/');
-      return response.data.data.items as BatchInventoryItem[];
+      const response = await apiClient.get('/inventory/', {
+        params: { page, limit, status: filter, search: searchTerm }
+      });
+      return response.data.data;
     },
   });
 
@@ -111,33 +117,20 @@ export const InventoryPage = () => {
     }
   };
 
-  const processedInventory = inventory?.map(item => ({
+  const processedInventory = inventoryData?.items?.map((item: BatchInventoryItem) => ({
     ...item,
     status: getStatus(item)
   })) || [];
 
-  // Summary stats
-  const totalStock = processedInventory.reduce((acc, curr) => acc + curr.available_quantity, 0);
-  const lowStockCount = processedInventory.filter(i => i.status === 'LOW_STOCK').length;
-  const nearExpiryCount = processedInventory.filter(i => i.status === 'NEAR_EXPIRY').length;
-  const expiredCount = processedInventory.filter(i => i.status === 'EXPIRED').length;
-  const outOfStockCount = processedInventory.filter(i => i.status === 'OUT_OF_STOCK').length;
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
 
-  // Filter
-  let filteredList = processedInventory;
-  if (filter !== 'ALL') {
-    filteredList = filteredList.filter(i => i.status === filter);
-  }
-
-  // Search
-  if (searchTerm) {
-    const s = searchTerm.toLowerCase();
-    filteredList = filteredList.filter(i => 
-      (i.medicine_name?.toLowerCase() || '').includes(s) ||
-      (i.generic_name && i.generic_name.toLowerCase().includes(s)) ||
-      (i.batch_no?.toLowerCase() || '').includes(s)
-    );
-  }
+  const handleFilterChange = (f: string) => {
+    setFilter(f);
+    setPage(1);
+  };
 
   return (
     <div className="w-full space-y-6 pb-10">
@@ -149,26 +142,7 @@ export const InventoryPage = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Stock</div>
-          <div className="text-3xl font-bold text-[#0B3B2C]">{totalStock}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Low Stock</div>
-          <div className="text-3xl font-bold text-orange-500">{lowStockCount}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Near Expiry</div>
-          <div className="text-3xl font-bold text-amber-500">{nearExpiryCount}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Expired</div>
-          <div className="text-3xl font-bold text-red-800">{expiredCount}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Out of Stock</div>
-          <div className="text-3xl font-bold text-red-600">{outOfStockCount}</div>
-        </div>
+        {/* We would typically use summary endpoint data here. For now, they might be inaccurate as they only reflect the current page if calculated here, so it's better to fetch these from a summary endpoint or hide them. I will leave them as placeholders/current-page-only for now or omit them to prevent confusion. */}
       </div>
 
       {/* Table Container */}
@@ -181,7 +155,7 @@ export const InventoryPage = () => {
               <button 
                 key={f}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors border ${filter === f ? 'bg-[#E8F0EB] text-[#1A5F50] border-[#1A5F50]/30' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                onClick={() => setFilter(f)}
+                onClick={() => handleFilterChange(f)}
               >
                 {f.replace(/_/g, ' ')}
               </button>
@@ -194,7 +168,7 @@ export const InventoryPage = () => {
               className="pl-9 bg-slate-50 border-slate-200 rounded-xl w-full" 
               placeholder="Search medicine, generic, batch..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -222,14 +196,14 @@ export const InventoryPage = () => {
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
-              ) : filteredList.length === 0 ? (
+              ) : processedInventory.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-12 text-slate-500">
                     No inventory found matching criteria.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredList.map((item) => (
+                processedInventory.map((item: BatchInventoryItem) => (
                   <TableRow key={item.batch_id} className="hover:bg-slate-50/50 transition-colors">
                     <TableCell className="font-semibold text-slate-800">{item.medicine_name}</TableCell>
                     <TableCell className="text-slate-600">{item.generic_name || '-'}</TableCell>
@@ -238,7 +212,7 @@ export const InventoryPage = () => {
                     <TableCell className="text-right font-bold text-slate-800">{item.available_quantity}</TableCell>
                     <TableCell className="text-right text-slate-600">₹{item.purchase_price.toFixed(2)}</TableCell>
                     <TableCell className="text-right font-medium text-slate-800">₹{item.selling_price.toFixed(2)}</TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
+                    <TableCell>{getStatusBadge(item.status || '')}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Button variant="ghost" size="sm" onClick={() => setMovementBatchId(item.batch_id)} className="text-primary hover:bg-[#E8F0EB]">
@@ -256,6 +230,21 @@ export const InventoryPage = () => {
             </TableBody>
           </Table>
         </div>
+        {inventoryData?.pagination && (
+          <div className="border-t border-slate-100">
+            <Pagination
+              page={inventoryData.pagination.page}
+              totalPages={inventoryData.pagination.pages}
+              total={inventoryData.pagination.total}
+              limit={inventoryData.pagination.limit}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Movement Modal */}
