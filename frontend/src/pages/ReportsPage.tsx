@@ -11,7 +11,7 @@ import { Pagination } from '@/components/ui/pagination';
 export const ReportsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
 
@@ -162,7 +162,7 @@ export const ReportsPage = () => {
       </div>
 
       {/* Detailed Report */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         
         <div className="p-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row justify-between items-center gap-4">
           <h2 className="font-bold text-slate-800">Detailed Sales Report</h2>

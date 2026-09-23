@@ -5,26 +5,31 @@ import { Supplier } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Search, Trash2, Edit, Truck } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Pagination } from '@/components/ui/pagination';
+import { useDebounce } from '@/hooks/use-debounce';
 
 export const SuppliersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [deleteSupplierId, setDeleteSupplierId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const debouncedSearch = useDebounce(searchTerm, 500);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: suppliers, isLoading } = useQuery({
-    queryKey: ['suppliers'],
+  const { data: suppliersData, isLoading } = useQuery({
+    queryKey: ['suppliers', page, limit, debouncedSearch],
     queryFn: async () => {
-      const response = await apiClient.get('/suppliers/');
-      // Match the backend pagination response structure
-      return response.data.data.items as Supplier[];
+      const response = await apiClient.get(`/suppliers/?page=${page}&limit=${limit}${debouncedSearch ? `&search=${debouncedSearch}` : ''}`);
+      return response.data.data;
     },
   });
 
@@ -68,16 +73,14 @@ export const SuppliersPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       toast({ title: 'Success', description: 'Supplier deleted successfully.' });
+      setDeleteSupplierId(null);
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.response?.data?.message || 'Failed to delete supplier', variant: 'destructive' });
     }
   });
 
-  const filteredSuppliers = suppliers?.filter(s => 
-    (s.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
-    (s.company_name && s.company_name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredSuppliers = suppliersData?.items as Supplier[] || [];
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -103,8 +106,12 @@ export const SuppliersPage = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm('Are you sure you want to delete this supplier?')) {
-      deleteMutation.mutate(id);
+    setDeleteSupplierId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteSupplierId) {
+      deleteMutation.mutate(deleteSupplierId);
     }
   };
 
@@ -165,7 +172,7 @@ export const SuppliersPage = () => {
         }
       />
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-100 bg-white flex justify-between items-center">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -178,7 +185,7 @@ export const SuppliersPage = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto flex-1">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
@@ -225,7 +232,44 @@ export const SuppliersPage = () => {
             </TableBody>
           </Table>
         </div>
+        {suppliersData?.pagination && (
+          <div className="border-t border-slate-100">
+            <Pagination
+              page={suppliersData.pagination.page}
+              totalPages={suppliersData.pagination.pages}
+              total={suppliersData.pagination.total}
+              limit={suppliersData.pagination.limit}
+              onPageChange={setPage}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
+          </div>
+        )}
       </div>
+
+      <Dialog open={!!deleteSupplierId} onOpenChange={(open) => !open && setDeleteSupplierId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Supplier</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this supplier? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeleteSupplierId(null)}>Cancel</Button>
+            <Button 
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

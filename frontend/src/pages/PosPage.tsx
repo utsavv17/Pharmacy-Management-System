@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
 interface POSMedicine {
   medicine_id: number;
@@ -49,6 +49,7 @@ export const PosPage = () => {
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
+  const [isClearBillModalOpen, setIsClearBillModalOpen] = useState(false);
   
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit'>('cash');
@@ -262,10 +263,7 @@ export const PosPage = () => {
       if (e.key === 'F2') {
         e.preventDefault();
         if (cart.length > 0) {
-            if (window.confirm('Are you sure you want to clear the current bill?')) {
-                resetPos();
-                setTimeout(() => searchInputRef.current?.focus(), 50);
-            }
+            setIsClearBillModalOpen(true);
         } else {
             resetPos();
             setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -790,6 +788,30 @@ export const PosPage = () => {
               disabled={!newCustomerName.trim() || createCustomerMutation.isPending}
             >
               {createCustomerMutation.isPending ? 'Saving...' : 'Save Customer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isClearBillModalOpen} onOpenChange={setIsClearBillModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear Bill</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to clear the current bill? This will remove all items from the cart.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsClearBillModalOpen(false)}>Cancel</Button>
+            <Button 
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                resetPos();
+                setIsClearBillModalOpen(false);
+                setTimeout(() => searchInputRef.current?.focus(), 50);
+              }}
+            >
+              Clear Bill
             </Button>
           </DialogFooter>
         </DialogContent>

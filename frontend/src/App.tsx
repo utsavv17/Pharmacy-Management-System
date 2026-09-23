@@ -7,6 +7,7 @@ import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { GlobalLoader } from './components/common/GlobalLoader';
+import { Toaster } from '@/components/ui/toaster';
 
 // Placeholder Pages
 import { DashboardPage } from './pages/DashboardPage';
@@ -63,6 +64,7 @@ function App() {
           </Router>
         </OrganizationProvider>
       </AuthProvider>
+      <Toaster />
     </QueryClientProvider>
   );
 }

@@ -16,7 +16,15 @@ export function OrganizationSwitcher() {
         setLoadingOrgs(true);
         try {
           const response = await apiClient.get('/organizations/');
-          setOrganizations(response.data);
+          const fetchedOrgs = Array.isArray(response.data) ? response.data : (response.data.items || []);
+          
+          const dummyOrg: Organization = { id: 0, name: "Select an org first", status: "ACTIVE" };
+          const allOrgs = [dummyOrg, ...fetchedOrgs];
+          setOrganizations(allOrgs);
+          
+          if (!currentOrganization && !localStorage.getItem('organization_id')) {
+            setCurrentOrganization(dummyOrg);
+          }
         } catch (error) {
           console.error("Failed to fetch organizations", error);
         } finally {

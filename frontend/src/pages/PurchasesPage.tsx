@@ -17,7 +17,7 @@ export const PurchasesPage = () => {
   const [view, setView] = useState<'list' | 'create'>('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [viewingPurchase, setViewingPurchase] = useState<Purchase | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
@@ -270,7 +270,7 @@ export const PurchasesPage = () => {
         }
       />
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-100 bg-white flex justify-between items-center">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

@@ -52,9 +52,10 @@ export const LoginPage = () => {
         });
       }
     } catch (error: any) {
+      const errorMsg = error.response?.data?.detail?.message || error.response?.data?.message || 'An error occurred during login';
       toast({
         title: 'Login Failed',
-        description: error.response?.data?.message || 'An error occurred during login',
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {

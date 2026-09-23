@@ -2,38 +2,45 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { DashboardTotals } from '@/types';
-import { IndianRupee, TrendingUp, ShoppingCart, Pill, Users, FileText, AlertTriangle, Clock, XCircle, Plus } from 'lucide-react';
+import { IndianRupee, TrendingUp, ShoppingCart, Pill, Users, FileText, AlertTriangle, Clock, XCircle, Plus, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { Badge } from '@/components/ui/badge';
 
 export const DashboardPage = () => {
   const { user } = useAuth();
+  const { currentOrganization } = useOrganization();
   const navigate = useNavigate();
   
+  const isDummyOrg = currentOrganization?.id === 0;
+
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboardTotals'],
+    queryKey: ['dashboardTotals', currentOrganization?.id],
     queryFn: async () => {
       const response = await apiClient.get('/dashboard/');
       return response.data.data as DashboardTotals;
     },
+    enabled: !isDummyOrg,
   });
 
   const { data: todayData, isLoading: todayLoading } = useQuery({
-    queryKey: ['dashboardToday'],
+    queryKey: ['dashboardToday', currentOrganization?.id],
     queryFn: async () => {
       const response = await apiClient.get('/dashboard/today');
       return response.data.data;
     },
+    enabled: !isDummyOrg,
   });
 
   const { data: inventoryData, isLoading: inventoryLoading } = useQuery({
-    queryKey: ['dashboardInventory'],
+    queryKey: ['dashboardInventory', currentOrganization?.id],
     queryFn: async () => {
       const response = await apiClient.get('/dashboard/inventory');
       return response.data.data;
     },
+    enabled: !isDummyOrg,
   });
 
   const formatCurrency = (amount: number) => {
@@ -62,6 +69,18 @@ export const DashboardPage = () => {
         <div className="grid gap-6 md:grid-cols-4">
           {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-slate-200 rounded-xl"></div>)}
         </div>
+      </div>
+    );
+  }
+
+  if (isDummyOrg) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-white border border-slate-200 rounded-xl shadow-sm">
+        <Building2 className="w-16 h-16 text-slate-300 mb-4" />
+        <h2 className="text-2xl font-bold text-slate-700 mb-2">Select an Organization</h2>
+        <p className="text-slate-500 max-w-md">
+          You are currently acting as a super admin without an organization selected. Please choose a pharmacy from the organization switcher in the top right to view its dashboard.
+        </p>
       </div>
     );
   }

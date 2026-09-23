@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
 import { 
   LayoutDashboard, 
   Pill, 
@@ -14,7 +15,6 @@ import {
   Building,
   CreditCard
 } from 'lucide-react';
-import { Toaster } from '@/components/ui/toaster';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import MyMedicalIcon from '@/assets/my-medical-icon.svg';
@@ -22,22 +22,29 @@ import MyMedicalIcon from '@/assets/my-medical-icon.svg';
 export const DashboardLayout = () => {
   const { user } = useAuth();
   const location = useLocation();
+  const { currentOrganization } = useOrganization();
+  const isDummyOrg = currentOrganization?.id === 0;
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'POS / Billing', href: '/pos', icon: ShoppingCart },
-    { name: 'Customers', href: '/customers', icon: Users },
-    { name: 'Medicines', href: '/medicines', icon: Pill },
-    { name: 'Inventory', href: '/inventory', icon: Package },
-    { name: 'Suppliers', href: '/suppliers', icon: Truck },
-    { name: 'Purchases', href: '/purchases', icon: PackagePlus },
-    { name: 'Sales & Reports', href: '/reports', icon: TrendingUp },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard, orgSpecific: false },
+    { name: 'POS / Billing', href: '/pos', icon: ShoppingCart, orgSpecific: true },
+    { name: 'Medicines', href: '/medicines', icon: Pill, orgSpecific: true },
+    { name: 'Inventory', href: '/inventory', icon: Package, orgSpecific: true },
+    { name: 'Purchases', href: '/purchases', icon: PackagePlus, orgSpecific: true },
+    { name: 'Suppliers', href: '/suppliers', icon: Truck, orgSpecific: true },
+    { name: 'Customers', href: '/customers', icon: Users, orgSpecific: true },
+    { name: 'Sales & Reports', href: '/reports', icon: TrendingUp, orgSpecific: true },
   ];
 
+  let activeNavigation = navigation;
+  if (isDummyOrg) {
+    activeNavigation = navigation.filter(item => !item.orgSpecific);
+  }
+
   if (user?.role === 'super_admin') {
-    navigation.push(
-      { name: 'Organizations', href: '/organizations', icon: Building },
-      { name: 'Plans', href: '/plans', icon: CreditCard }
+    activeNavigation.push(
+      { name: 'Organizations', href: '/organizations', icon: Building, orgSpecific: false },
+      { name: 'Plans', href: '/plans', icon: CreditCard, orgSpecific: false }
     );
   }
 
@@ -55,7 +62,7 @@ export const DashboardLayout = () => {
         
         <div className="flex-1 overflow-y-auto py-5">
           <nav className="space-y-1.5 px-3">
-            {navigation.map((item) => {
+            {activeNavigation.map((item) => {
               const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href));
               return (
                 <Link
@@ -91,8 +98,6 @@ export const DashboardLayout = () => {
           <Footer />
         </main>
       </div>
-
-      <Toaster />
     </div>
   );
 };

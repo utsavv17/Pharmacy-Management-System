@@ -35,6 +35,11 @@ class AuthService:
             time.sleep(max(0, 0.5 - (time.time() - start_time)))
             logger.warning(f"Failed login attempt for user: {email} from IP: {ip_address}")
             return None, None, None, None, "PASSWORD_INCORRECT"
+            
+        if user.organization_id and user.organization and user.organization.status != 'ACTIVE':
+            time.sleep(max(0, 0.5 - (time.time() - start_time)))
+            logger.warning(f"Failed login attempt for user in inactive org: {email} from IP: {ip_address}")
+            return None, None, None, None, "ORGANIZATION_INACTIVE"
         
         logger.info(f"Successful login for user: {email} from IP: {ip_address}")
 

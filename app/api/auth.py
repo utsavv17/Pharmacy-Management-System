@@ -59,6 +59,16 @@ def login(payload: LoginSchema, request: Request, response: Response, db: Sessio
             }
         )
 
+    if error == "ORGANIZATION_INACTIVE":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "success": False,
+                "message": "Your organization is currently inactive or suspended. Please contact support.",
+                "error": "ORGANIZATION_INACTIVE"
+            }
+        )
+
     # Set refresh token as HTTP-only cookie
     # secure=True only in production (HTTPS), False in development/HTTP
     is_production = settings.app_env == "production"

@@ -6,12 +6,15 @@ import { Building, Plus, MapPin, Mail, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Organization } from '@/contexts/OrganizationContext';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export const OrganizationsPage = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [actionOrg, setActionOrg] = useState<{id: number, name: string, type: 'activate' | 'deactivate'} | null>(null);
 
   useEffect(() => {
     fetchOrganizations();
@@ -21,7 +24,8 @@ export const OrganizationsPage = () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/organizations/');
-      setOrganizations(response.data);
+      const orgsData = Array.isArray(response.data) ? response.data : (response.data.items || []);
+      setOrganizations(orgsData);
     } catch (error) {
       toast({
         title: "Error fetching organizations",
@@ -33,21 +37,33 @@ export const OrganizationsPage = () => {
     }
   };
 
-  const handleDeactivate = async (orgId: number, orgName: string) => {
-    if (!window.confirm(`Are you sure you want to deactivate ${orgName}? This will prevent all users in this organization from logging in.`)) {
-      return;
-    }
+  const handleActionClick = (orgId: number, orgName: string, type: 'activate' | 'deactivate') => {
+    setActionOrg({ id: orgId, name: orgName, type });
+    setDialogOpen(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!actionOrg) return;
     
     try {
-      await apiClient.delete(`/organizations/${orgId}`);
-      toast({
-        title: "Organization Deactivated",
-        description: `${orgName} has been successfully deactivated.`,
-      });
+      if (actionOrg.type === 'deactivate') {
+        await apiClient.delete(`/organizations/${actionOrg.id}`);
+        toast({
+          title: "Organization Deactivated",
+          description: `${actionOrg.name} has been successfully deactivated.`,
+        });
+      } else {
+        await apiClient.post(`/organizations/${actionOrg.id}/activate`);
+        toast({
+          title: "Organization Activated",
+          description: `${actionOrg.name} has been successfully activated.`,
+        });
+      }
+      setDialogOpen(false);
       fetchOrganizations();
     } catch (error: any) {
       toast({
-        title: "Error deactivating organization",
+        title: `Error ${actionOrg.type === 'deactivate' ? 'deactivating' : 'activating'} organization`,
         description: error.response?.data?.detail || "Please try again later.",
         variant: "destructive"
       });
@@ -116,9 +132,13 @@ export const OrganizationsPage = () => {
               </div>
               
               <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                {org.status === 'ACTIVE' && (
-                  <Button variant="outline" size="sm" className="rounded-lg text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleDeactivate(org.id, org.name)}>
+                {org.status === 'ACTIVE' ? (
+                  <Button variant="outline" size="sm" className="rounded-lg text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleActionClick(org.id, org.name, 'deactivate')}>
                     Deactivate
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" className="rounded-lg text-green-600 border-green-200 hover:bg-green-50" onClick={() => handleActionClick(org.id, org.name, 'activate')}>
+                    Activate
                   </Button>
                 )}
                 <Button variant="outline" size="sm" className="rounded-lg border-slate-200 text-slate-700 font-semibold hover:bg-white" onClick={() => navigate(`/organizations/${org.id}`)}>
@@ -129,6 +149,30 @@ export const OrganizationsPage = () => {
           ))}
         </div>
       )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionOrg?.type === 'deactivate' ? 'Deactivate Organization' : 'Activate Organization'}
+            </DialogTitle>
+            <DialogDescription>
+              {actionOrg?.type === 'deactivate' 
+                ? `Are you sure you want to deactivate ${actionOrg?.name}? This will prevent all users in this organization from logging in.`
+                : `Are you sure you want to activate ${actionOrg?.name}? Users in this organization will be able to log in again.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button 
+              className={actionOrg?.type === 'deactivate' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}
+              onClick={handleConfirmAction}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -30,7 +30,8 @@ export const PlansPage = () => {
     try {
       setLoading(true);
       const response = await apiClient.get('/plans/');
-      setPlans(response.data);
+      const plansData = Array.isArray(response.data) ? response.data : (response.data.items || []);
+      setPlans(plansData);
     } catch (error) {
       toast({
         title: "Error fetching plans",

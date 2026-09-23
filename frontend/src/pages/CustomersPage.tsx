@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Search, Plus, Phone, Mail, Award, History, Loader2, Edit, Trash2 } from 'lucide-react';
@@ -17,10 +17,11 @@ import { Pagination } from '@/components/ui/pagination';
 export const CustomersPage = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedHistoryCustomer, setSelectedHistoryCustomer] = useState<any>(null);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [deleteCustomer, setDeleteCustomer] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', address: '' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -112,8 +113,13 @@ export const CustomersPage = () => {
   };
 
   const handleDelete = (customer: any) => {
-    if (window.confirm(`Are you sure you want to delete "${customer.name}"?`)) {
-      deleteCustomerMutation.mutate(customer.id);
+    setDeleteCustomer(customer);
+  };
+
+  const confirmDelete = () => {
+    if (deleteCustomer) {
+      deleteCustomerMutation.mutate(deleteCustomer.id);
+      setDeleteCustomer(null);
     }
   };
 
@@ -136,7 +142,7 @@ export const CustomersPage = () => {
     <div className="w-full space-y-6 pb-10">
       <PageHeader
         title="Customers"
-        description="Manage pharmacy customers and loyalty points"
+        description="Manage pharmacy customers"
         icon={Users}
         actions={
           <Dialog open={isAddOpen} onOpenChange={(open) => {
@@ -209,7 +215,7 @@ export const CustomersPage = () => {
         }
       />
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-100 bg-white flex justify-between items-center">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -228,7 +234,6 @@ export const CustomersPage = () => {
               <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
                 <TableHead className="font-semibold text-slate-600">Customer</TableHead>
                 <TableHead className="font-semibold text-slate-600">Contact</TableHead>
-                <TableHead className="font-semibold text-slate-600">Loyalty Points</TableHead>
                 <TableHead className="font-semibold text-slate-600">Total Purchases</TableHead>
                 <TableHead className="font-semibold text-slate-600 text-center">Orders</TableHead>
                 <TableHead className="font-semibold text-slate-600 text-right">Actions</TableHead>
@@ -237,13 +242,13 @@ export const CustomersPage = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12">
+                  <TableCell colSpan={5} className="text-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                   </TableCell>
                 </TableRow>
               ) : customersData?.items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                  <TableCell colSpan={5} className="text-center py-12 text-slate-500">
                     No customers found.
                   </TableCell>
                 </TableRow>
@@ -267,11 +272,6 @@ export const CustomersPage = () => {
                           <Mail className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> {customer.email}
                         </div>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-[#0B3B2C] font-bold">
-                        <Award className="w-4 h-4 mr-1.5 text-amber-500" /> {customer.total_points}
-                      </div>
                     </TableCell>
                     <TableCell className="font-medium text-slate-700">₹{customer.total_purchase_amount.toFixed(2)}</TableCell>
                     <TableCell className="text-center">
@@ -320,6 +320,28 @@ export const CustomersPage = () => {
           onClose={() => setSelectedHistoryCustomer(null)} 
         />
       )}
+      
+      <Dialog open={!!deleteCustomer} onOpenChange={(open) => !open && setDeleteCustomer(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Customer</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteCustomer?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeleteCustomer(null)}>Cancel</Button>
+            <Button 
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={confirmDelete}
+              disabled={deleteCustomerMutation.isPending}
+            >
+              {deleteCustomerMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

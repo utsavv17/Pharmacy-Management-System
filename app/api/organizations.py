@@ -153,3 +153,21 @@ def delete_organization(
     db.commit()
     
     return {"success": True, "message": "Organization deactivated successfully"}
+
+@router.post("/{org_id}/activate")
+def activate_organization(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_super_admin)
+):
+    """
+    Activate an inactive organization. Only SUPER_ADMIN can do this.
+    """
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    org.status = "ACTIVE"
+    db.commit()
+    
+    return {"success": True, "message": "Organization activated successfully"}

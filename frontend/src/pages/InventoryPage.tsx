@@ -30,7 +30,7 @@ export const InventoryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('ALL');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [movementBatchId, setMovementBatchId] = useState<number | null>(null);
   const [editingBatch, setEditingBatch] = useState<BatchInventoryItem | null>(null);
   const [editForm, setEditForm] = useState({ selling_price: 0, purchase_price: 0, quantity: 0, expiry_date: '' });
@@ -146,7 +146,7 @@ export const InventoryPage = () => {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         
         {/* Filters & Search Header */}
         <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between bg-white">

@@ -5,7 +5,7 @@ import { Medicine } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Search, Pill, Edit, Trash2 } from 'lucide-react';
@@ -15,9 +15,10 @@ import { Pagination } from '@/components/ui/pagination';
 export const MedicinesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(10);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+  const [deleteMedicine, setDeleteMedicine] = useState<Medicine | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -94,8 +95,13 @@ export const MedicinesPage = () => {
   };
 
   const handleDelete = (medicine: Medicine) => {
-    if (window.confirm(`Are you sure you want to delete "${medicine.name}"?`)) {
-      deleteMutation.mutate(medicine.id);
+    setDeleteMedicine(medicine);
+  };
+
+  const confirmDelete = () => {
+    if (deleteMedicine) {
+      deleteMutation.mutate(deleteMedicine.id);
+      setDeleteMedicine(null);
     }
   };
 
@@ -190,7 +196,7 @@ export const MedicinesPage = () => {
         }
       />
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-slate-100 bg-white flex justify-between items-center">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -276,6 +282,28 @@ export const MedicinesPage = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={!!deleteMedicine} onOpenChange={(open) => !open && setDeleteMedicine(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Medicine</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteMedicine?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeleteMedicine(null)}>Cancel</Button>
+            <Button 
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
