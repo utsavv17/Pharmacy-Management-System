@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.schemas.user import UserCreateSchema, UserUpdateSchema, ChangePasswordSchema
@@ -17,12 +17,15 @@ def create_user_endpoint(
 ):
 
     # Allow only admin to create users
-    if current_user.role != "admin":
-        return {
-            "success": False,
-            "message": "Permission denied",
-            "error": "FORBIDDEN"
-        }
+    if current_user.role not in ["super_admin", "owner"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "success": False,
+                "message": "Permission denied",
+                "error": "FORBIDDEN"
+            }
+        )
 
     user, error = UserService.create_user(
         db=db,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,47 @@ export const ProfilePage = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [orgData, setOrgData] = useState({
+    address: currentOrganization?.address || '',
+    city: currentOrganization?.city || '',
+    state: currentOrganization?.state || '',
+    pincode: currentOrganization?.pincode || '',
+    gst_number: currentOrganization?.gst_number || '',
+    drug_license_number: currentOrganization?.drug_license_number || ''
+  });
+  const [isSavingOrg, setIsSavingOrg] = useState(false);
+
+  useEffect(() => {
+    if (currentOrganization) {
+      setOrgData({
+        address: currentOrganization.address || '',
+        city: currentOrganization.city || '',
+        state: currentOrganization.state || '',
+        pincode: currentOrganization.pincode || '',
+        gst_number: currentOrganization.gst_number || '',
+        drug_license_number: currentOrganization.drug_license_number || ''
+      });
+    }
+  }, [currentOrganization]);
+
+  const handleSaveOrg = async () => {
+    if (!currentOrganization) return;
+    setIsSavingOrg(true);
+    try {
+      await apiClient.put(`/organizations/${currentOrganization.id}`, orgData);
+      toast({ title: 'Success', description: 'Organization details updated successfully.' });
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: error.response?.data?.message || 'Failed to update organization details.', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSavingOrg(false);
+    }
+  };
+
 
   const handleSaveProfile = async () => {
     if (!fullName.trim()) {
@@ -114,7 +155,7 @@ export const ProfilePage = () => {
           <h1 className="text-2xl font-bold text-slate-800">{user?.full_name}</h1>
           <p className="text-slate-500 font-medium">{getRoleDisplayName(user?.role)}</p>
           <div className="mt-3 inline-flex px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-md border border-slate-200">
-            {currentOrganization?.name || 'Platform Administrator'}
+            {user?.organization_name || currentOrganization?.name || 'Platform Administrator'}
           </div>
         </div>
       </div>
@@ -156,6 +197,52 @@ export const ProfilePage = () => {
               </div>
             </div>
           </div>
+        
+        {/* Organization Info */}
+        {currentOrganization && (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-slate-400" />
+              <h2 className="font-bold text-slate-800">Organization Settings</h2>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="gst_number" className="text-slate-600 font-semibold">GST Number</Label>
+                  <Input id="gst_number" value={orgData.gst_number} onChange={e => setOrgData({...orgData, gst_number: e.target.value})} className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="drug_license_number" className="text-slate-600 font-semibold">Drug License Number</Label>
+                  <Input id="drug_license_number" value={orgData.drug_license_number} onChange={e => setOrgData({...orgData, drug_license_number: e.target.value})} className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address" className="text-slate-600 font-semibold">Address</Label>
+                <Input id="address" value={orgData.address} onChange={e => setOrgData({...orgData, address: e.target.value})} className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" />
+              </div>
+              <div className="grid grid-cols-3 gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="city" className="text-slate-600 font-semibold">City</Label>
+                  <Input id="city" value={orgData.city} onChange={e => setOrgData({...orgData, city: e.target.value})} className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state" className="text-slate-600 font-semibold">State</Label>
+                  <Input id="state" value={orgData.state} onChange={e => setOrgData({...orgData, state: e.target.value})} className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pincode" className="text-slate-600 font-semibold">Pincode</Label>
+                  <Input id="pincode" value={orgData.pincode} onChange={e => setOrgData({...orgData, pincode: e.target.value})} className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" />
+                </div>
+              </div>
+              <div className="pt-2 border-t border-slate-100 mt-6 pt-6">
+                <Button onClick={handleSaveOrg} disabled={isSavingOrg} className="h-11 px-6 rounded-xl bg-[#0B3B2C] hover:bg-[#07261d] text-white font-bold">
+                  {isSavingOrg ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {isSavingOrg ? 'Saving...' : 'Save Settings'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* Right Column: Security */}
@@ -182,7 +269,11 @@ export const ProfilePage = () => {
             <div className="p-6 space-y-4 text-sm">
               <div className="flex justify-between items-center pb-3 border-b border-slate-100 border-dashed">
                 <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Status</span>
-                <span className="font-bold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-md text-xs uppercase tracking-wider">Active</span>
+                {user?.is_active === 1 ? (
+                  <span className="font-bold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-md text-xs uppercase tracking-wider">Active</span>
+                ) : (
+                  <span className="font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-md text-xs uppercase tracking-wider">Inactive</span>
+                )}
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-slate-100 border-dashed">
                 <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Role</span>
@@ -190,8 +281,8 @@ export const ProfilePage = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Organization</span>
-                <span className="font-bold text-slate-800 text-right max-w-[140px] truncate" title={currentOrganization?.name}>
-                  {currentOrganization?.name || 'Global'}
+                <span className="font-bold text-slate-800 text-right max-w-[140px] truncate" title={user?.organization_name || currentOrganization?.name}>
+                  {user?.organization_name || currentOrganization?.name || 'Global'}
                 </span>
               </div>
             </div>

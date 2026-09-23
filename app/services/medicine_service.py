@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.models.medicine import Medicine
 
 
@@ -45,5 +46,10 @@ class MedicineService:
             return "NOT_FOUND"
 
         db.delete(med)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            return "INTEGRITY_ERROR"
+            
         return None

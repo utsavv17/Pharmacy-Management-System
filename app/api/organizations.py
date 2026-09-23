@@ -100,9 +100,10 @@ def create_organization(
     settings = Settings(
         organization_id=org.id,
         pharmacy_name=org.name,
-        address=org.address or "",
+        address=org.address,
         phone=org.phone,
-        email=org.email
+        email=org.email,
+        drug_license=org.drug_license_number
     )
     db.add(settings)
     
@@ -130,6 +131,15 @@ def update_organization(
         
     for field, value in org_in.model_dump(exclude_unset=True).items():
         setattr(org, field, value)
+        
+    # Also update Settings if address or drug_license_number changed
+    from app.models.settings import Settings
+    settings = db.query(Settings).filter(Settings.organization_id == org_id).first()
+    if settings:
+        if org_in.address is not None:
+            settings.address = org_in.address
+        if org_in.drug_license_number is not None:
+            settings.drug_license = org_in.drug_license_number
         
     db.commit()
     db.refresh(org)

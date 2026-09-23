@@ -8,12 +8,12 @@ class OrganizationBase(BaseModel):
     owner_name: str
     email: str
     phone: str
-    address: Optional[str] = None
+    address: str
     city: Optional[str] = None
     state: Optional[str] = None
     pincode: Optional[str] = None
     gst_number: Optional[str] = None
-    drug_license_number: Optional[str] = None
+    drug_license_number: str
     status: str = "ACTIVE"
     plan_id: Optional[int] = None
 

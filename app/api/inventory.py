@@ -106,7 +106,7 @@ def inventory_list(
                     "medicine_id": row.medicine_id,
                     "medicine_name": row.medicine_name,
                     "generic_name": row.generic_name,
-                    "batch_number": row.batch_number,
+                    "batch_no": row.batch_number,
                     "expiry_date": row.expiry_date,
                     "available_quantity": row.available_quantity,
                     "purchase_price": float(row.purchase_price) if row.purchase_price else 0,

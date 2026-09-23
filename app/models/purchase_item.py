@@ -17,4 +17,5 @@ class PurchaseItem(Base):
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
     purchase = relationship("Purchase", back_populates="items")
+    medicine = relationship("Medicine")
     organization = relationship("Organization")

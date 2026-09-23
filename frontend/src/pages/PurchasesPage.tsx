@@ -366,7 +366,7 @@ export const PurchasesPage = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="font-semibold text-slate-600">Medicine ID</TableHead>
+                          <TableHead className="font-semibold text-slate-600">Medicine</TableHead>
                           <TableHead className="font-semibold text-slate-600">Batch</TableHead>
                           <TableHead className="font-semibold text-slate-600">Expiry</TableHead>
                           <TableHead className="text-right font-semibold text-slate-600">Qty</TableHead>
@@ -377,7 +377,7 @@ export const PurchasesPage = () => {
                       <TableBody>
                         {viewingPurchase.items?.map((item, idx) => (
                           <TableRow key={idx}>
-                            <TableCell className="text-slate-600">{item.medicine_id}</TableCell>
+                            <TableCell className="font-semibold text-slate-800">{item.medicine_name || `ID: ${item.medicine_id}`}</TableCell>
                             <TableCell className="font-mono text-xs text-slate-600">{item.batch_no}</TableCell>
                             <TableCell className="text-slate-600">{item.expiry_date}</TableCell>
                             <TableCell className="text-right font-bold text-slate-800">{item.quantity}</TableCell>

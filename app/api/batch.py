@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.schemas.batch import BatchCreateSchema, BatchUpdateSchema
@@ -149,12 +149,15 @@ def delete_batch(
     org_id: int = Depends(get_current_organization)
 ):
 
-    if current_user.role != "admin":
-        return {
-            "success": False,
-            "message": "Permission denied",
-            "error": "FORBIDDEN"
-        }
+    if current_user.role not in ["super_admin", "owner"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "success": False,
+                "message": "Permission denied",
+                "error": "FORBIDDEN"
+            }
+        )
 
     error = BatchService.delete(db, batch_id, org_id)
 

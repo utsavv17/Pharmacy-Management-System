@@ -8,6 +8,12 @@ export interface Organization {
   owner_name?: string;
   email?: string;
   phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  gst_number?: string;
+  drug_license_number?: string;
 }
 
 interface OrganizationContextType {

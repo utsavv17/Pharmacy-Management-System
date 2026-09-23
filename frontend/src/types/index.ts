@@ -4,6 +4,8 @@ export interface User {
   full_name: string;
   role: string;
   organization_id?: number;
+  organization_name?: string;
+  is_active: number;
 }
 
 export interface Medicine {
@@ -79,6 +81,7 @@ export interface Supplier {
 export interface PurchaseItem {
   id?: number;
   medicine_id: number;
+  medicine_name?: string;
   batch_no: string;
   expiry_date: string;
   purchase_price: number;

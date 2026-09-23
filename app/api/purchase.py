@@ -45,6 +45,7 @@ def create_purchase(
                 {
                     "id": item.id,
                     "medicine_id": item.medicine_id,
+                    "medicine_name": item.medicine.name if item.medicine else "Unknown",
                     "batch_no": item.batch_no,
                     "expiry_date": item.expiry_date,
                     "purchase_price": item.purchase_price,
@@ -131,7 +132,20 @@ def list_purchases(
                     "supplier_name": p.supplier_name,
                     "purchase_date": p.purchase_date,
                     "total_amount": p.total_amount,
-                    "created_at": p.created_at
+                    "created_at": p.created_at,
+                    "items": [
+                        {
+                            "id": item.id,
+                            "medicine_id": item.medicine_id,
+                            "medicine_name": item.medicine.name if item.medicine else "Unknown",
+                            "batch_no": item.batch_no,
+                            "expiry_date": item.expiry_date,
+                            "purchase_price": item.purchase_price,
+                            "selling_price": item.selling_price,
+                            "quantity": item.quantity
+                        }
+                        for item in p.items
+                    ]
                 }
                 for p in paginated["items"]
             ],

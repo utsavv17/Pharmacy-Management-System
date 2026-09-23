@@ -11,6 +11,7 @@ class Settings(Base):
     address = Column(Text, nullable=True)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    drug_license = Column(String, nullable=True)
     invoice_footer = Column(Text, nullable=True)
     
     # Loyalty configuration

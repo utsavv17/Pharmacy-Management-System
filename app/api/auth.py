@@ -23,7 +23,9 @@ def get_me(user: User = Depends(get_current_user)):
             "email": user.email,
             "full_name": user.full_name,
             "role": user.role,
-            "organization_id": user.organization_id
+            "organization_id": user.organization_id,
+            "organization_name": user.organization.name if user.organization else None,
+            "is_active": user.is_active
         }
     }
 
@@ -92,7 +94,9 @@ def login(payload: LoginSchema, request: Request, response: Response, db: Sessio
                 "email": user.email,
                 "full_name": user.full_name,
                 "role": user.role,
-                "organization_id": user.organization_id
+                "organization_id": user.organization_id,
+                "organization_name": user.organization.name if user.organization else None,
+                "is_active": user.is_active
             }
         }
     }

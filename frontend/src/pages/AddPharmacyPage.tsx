@@ -182,15 +182,15 @@ export const AddPharmacyPage = () => {
                     <Input id="gst_number" name="gst_number" className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" value={formData.gst_number} onChange={handleChange} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="drug_license_number" className="text-slate-600 font-semibold">Drug License Number</Label>
-                    <Input id="drug_license_number" name="drug_license_number" className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" value={formData.drug_license_number} onChange={handleChange} />
+                    <Label htmlFor="drug_license_number" className="text-slate-600 font-semibold">Drug License Number *</Label>
+                    <Input id="drug_license_number" name="drug_license_number" required className="h-11 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" value={formData.drug_license_number} onChange={handleChange} />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address" className="text-slate-600 font-semibold">Address</Label>
+                  <Label htmlFor="address" className="text-slate-600 font-semibold">Address *</Label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                    <Input id="address" name="address" className="h-12 pl-12 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" value={formData.address} onChange={handleChange} />
+                    <Input id="address" name="address" required className="h-12 pl-12 rounded-xl bg-white border-slate-200 focus-visible:ring-primary/20" value={formData.address} onChange={handleChange} />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-5">

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.schemas.medicine import MedicineCreateSchema, MedicineUpdateSchema
@@ -236,13 +236,16 @@ def delete_medicine(
     org_id: int = Depends(get_current_organization)
 ):
 
-    # Optional: only admins can delete
-    if current_user.role != "admin":
-        return {
-            "success": False,
-            "message": "Permission denied",
-            "error": "FORBIDDEN"
-        }
+    # Only super_admin or owner can delete
+    if current_user.role not in ["super_admin", "owner"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "success": False,
+                "message": "Permission denied",
+                "error": "FORBIDDEN"
+            }
+        )
 
     error = MedicineService.delete(db, medicine_id, org_id)
 
@@ -252,6 +255,16 @@ def delete_medicine(
             "message": "Medicine not found",
             "error": "NOT_FOUND"
         }
+
+    if error == "INTEGRITY_ERROR":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "success": False,
+                "message": "Cannot delete this medicine because it is linked to existing batches or sales history.",
+                "error": "INTEGRITY_ERROR"
+            }
+        )
 
     return {
         "success": True,

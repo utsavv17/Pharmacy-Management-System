@@ -83,17 +83,16 @@ class PDFService:
 
         # 2. Pharmacy Info Box
         settings = db.query(Settings).filter(Settings.organization_id == org_id).first()
-        pharmacy_name = settings.pharmacy_name if settings and settings.pharmacy_name else "LIFECARE MEDICAL & GENERAL STORE"
-        address = settings.address if settings and settings.address else "Shop No. 12, Shree Plaza, Baner Road, Pune, Maharashtra - 411045"
-        phone = settings.phone if settings and settings.phone else "+91 98765 43210"
+        pharmacy_name = settings.pharmacy_name
+        address = settings.address
+        phone = settings.phone
         
-        gstin = "27ABCDE1234F1Z5"
-        drug_license = "MH-PUN-2026-001234"
+        drug_license = settings.drug_license
 
         pharma_html = (
             f"<b><font size=16>{pharmacy_name.upper()}</font></b><br/>"
             f"{address}<br/>"
-            f"Phone: {phone} | GSTIN: {gstin}<br/>"
+            f"Phone: {phone}<br/>"
             f"Drug Licence No.: {drug_license}"
         )
         pharma_p = Paragraph(pharma_html, center_style)
@@ -194,16 +193,14 @@ class PDFService:
         elements.append(Spacer(1, 10))
 
         # 6. Totals Section
-        taxable_value = sale.total_amount / 1.05
-        cgst = taxable_value * 0.025
-        sgst = taxable_value * 0.025
-        
         totals_data = [
-            [Paragraph("<b>Taxable Value</b>", base_normal), Paragraph(f"Rs. {taxable_value:.2f}", right_style)],
-            [Paragraph("CGST @ 2.5%", base_normal), Paragraph(f"Rs. {cgst:.2f}", right_style)],
-            [Paragraph("SGST @ 2.5%", base_normal), Paragraph(f"Rs. {sgst:.2f}", right_style)],
-            [Paragraph("<b>Grand Total</b>", base_normal), Paragraph(f"<b>Rs. {sale.total_amount:.2f}</b>", right_style)],
+            [Paragraph("Sub Total", base_normal), Paragraph(f"Rs. {sale.total_amount + sale.discount_amount:.2f}", right_style)]
         ]
+        
+        if sale.discount_amount > 0:
+            totals_data.append([Paragraph("Discount", base_normal), Paragraph(f"- Rs. {sale.discount_amount:.2f}", right_style)])
+            
+        totals_data.append([Paragraph("<b>Grand Total</b>", base_normal), Paragraph(f"<b>Rs. {sale.total_amount:.2f}</b>", right_style)])
         
         totals_table = Table(totals_data, colWidths=[130, 90])
         totals_table.setStyle(TableStyle([
@@ -228,7 +225,7 @@ class PDFService:
             words = num2words(rupees, lang='en_IN').title()
             if paise > 0:
                 words += f" and {num2words(paise, lang='en_IN').title()} Paise"
-            words = f"Indian Rupees {words} Only"
+            words = f"{words} Only"
         else:
             words = f"Rs. {sale.total_amount:.2f}"
             
