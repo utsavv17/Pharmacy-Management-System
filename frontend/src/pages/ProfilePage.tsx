@@ -46,17 +46,26 @@ export const ProfilePage = () => {
   const [isSavingOrg, setIsSavingOrg] = useState(false);
 
   useEffect(() => {
-    if (currentOrganization) {
-      setOrgData({
-        address: currentOrganization.address || '',
-        city: currentOrganization.city || '',
-        state: currentOrganization.state || '',
-        pincode: currentOrganization.pincode || '',
-        gst_number: currentOrganization.gst_number || '',
-        drug_license_number: currentOrganization.drug_license_number || ''
-      });
+    if (currentOrganization?.id) {
+      const fetchOrgDetails = async () => {
+        try {
+          const response = await apiClient.get('/organizations/me');
+          const org = response.data;
+          setOrgData({
+            address: org.address || '',
+            city: org.city || '',
+            state: org.state || '',
+            pincode: org.pincode || '',
+            gst_number: org.gst_number || '',
+            drug_license_number: org.drug_license_number || ''
+          });
+        } catch (error) {
+          console.error("Failed to fetch full organization details", error);
+        }
+      };
+      fetchOrgDetails();
     }
-  }, [currentOrganization]);
+  }, [currentOrganization?.id]);
 
   const handleSaveOrg = async () => {
     if (!currentOrganization) return;
