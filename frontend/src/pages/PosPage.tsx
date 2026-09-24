@@ -21,10 +21,11 @@ interface POSMedicine {
   medicine_id: number;
   medicine_name: string;
   batch_id: number;
-  batch_no: string;
+  batch_number: string;
   stock: number;
   selling_price: number;
   expiry_date: string;
+  barcode: string | null;
 }
 
 interface CartItem extends POSMedicine {
@@ -142,9 +143,11 @@ export const PosPage = () => {
   // Derived State
   const filteredMedicines = useMemo(() => {
     if (!searchTerm.trim()) return [];
+    const searchLower = searchTerm.toLowerCase();
     return posMedicines?.filter(m => 
-      (m.medicine_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
-      (m.batch_no?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      (m.medicine_name?.toLowerCase() || '').includes(searchLower) || 
+      (m.batch_number?.toLowerCase() || '').includes(searchLower) ||
+      (m.barcode?.toLowerCase() || '').includes(searchLower)
     ) || [];
   }, [posMedicines, searchTerm]);
   
@@ -321,6 +324,7 @@ export const PosPage = () => {
         actions={
           <Button variant="outline" className="bg-white rounded-xl text-slate-700 font-semibold border-slate-200" onClick={resetPos}>
             <RefreshCw className="w-4 h-4 mr-2 text-slate-400" /> Reset
+            <kbd className="ml-2 hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono text-slate-500 font-medium">F2</kbd>
           </Button>
         }
       />
@@ -360,7 +364,7 @@ export const PosPage = () => {
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono text-slate-500 font-medium">
-                Ctrl K
+                F3
               </kbd>
             </div>
 
@@ -386,7 +390,7 @@ export const PosPage = () => {
                       <div>
                         <h4 className="font-semibold text-slate-800">{med.medicine_name}</h4>
                         <div className="text-xs text-slate-500 flex gap-3 mt-1">
-                          <span>Batch: {med.batch_no}</span>
+                          <span>Batch: {med.batch_number}</span>
                           <span className={med.stock < 10 ? 'text-red-500 font-medium' : ''}>Stock: {med.stock}</span>
                           <span>Exp: {med.expiry_date}</span>
                         </div>
@@ -440,7 +444,7 @@ export const PosPage = () => {
                       <tr key={item.batch_id} className="border-b border-slate-50 hover:bg-slate-50/50">
                         <td className="px-5 py-4">
                           <p className="font-semibold text-slate-800">{item.medicine_name}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Batch: {item.batch_no} <span className="mx-1">•</span> Stock: {item.quantity}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Batch: {item.batch_number} <span className="mx-1">•</span> Stock: {item.quantity}</p>
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center justify-center gap-2">
@@ -576,7 +580,10 @@ export const PosPage = () => {
                 ) : (
                   <div className="space-y-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-500">Mobile Number</Label>
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs text-slate-500">Mobile Number</Label>
+                        <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono text-slate-500 font-medium">F4</kbd>
+                      </div>
                       <div className="relative">
                         <Input 
                           placeholder="e.g. 9876543210" 
@@ -654,9 +661,12 @@ export const PosPage = () => {
 
               {/* Payment Method */}
               <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <CreditCard className="w-3.5 h-3.5 text-slate-400" />
-                  <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Payment Method</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                    <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">Payment Method</h3>
+                  </div>
+                  <kbd className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono text-slate-500 font-medium">F8</kbd>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
@@ -720,14 +730,17 @@ export const PosPage = () => {
               </div>
 
               <Button 
-                className="w-full h-14 rounded-xl bg-[#0B3B2C] hover:bg-[#07261d] text-white font-bold text-lg shadow-sm"
+                className="w-full h-14 rounded-xl bg-[#0B3B2C] hover:bg-[#07261d] text-white font-bold text-lg shadow-sm relative"
                 disabled={cart.length === 0 || createSaleMutation.isPending}
                 onClick={() => createSaleMutation.mutate()}
               >
                 {createSaleMutation.isPending ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
                 ) : (
-                  <>Complete sale</>
+                  <>
+                    Complete sale
+                    <kbd className="absolute right-4 hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-white/20 rounded text-[11px] font-mono text-white font-medium border border-white/20">F9</kbd>
+                  </>
                 )}
               </Button>
             </div>

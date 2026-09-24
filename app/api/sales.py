@@ -95,7 +95,8 @@ def get_pos_medicines(
             Batch.batch_no.label("batch_number"),
             Batch.quantity.label("stock"),
             Batch.selling_price,
-            Batch.expiry_date
+            Batch.expiry_date,
+            Medicine.barcode
         )
         .join(Batch, Medicine.id == Batch.medicine_id)
         .filter(Batch.quantity > 0, Medicine.organization_id == org_id)
@@ -106,7 +107,8 @@ def get_pos_medicines(
         query = query.filter(
             (Medicine.name.ilike(s)) |
             (Medicine.generic_name.ilike(s)) |
-            (Batch.batch_no.ilike(s))
+            (Batch.batch_no.ilike(s)) |
+            (Medicine.barcode.ilike(s))
         )
     
     query = query.order_by(Medicine.name, Batch.expiry_date)
@@ -121,7 +123,8 @@ def get_pos_medicines(
             "batch_number": m.batch_number,
             "stock": int(m.stock),
             "selling_price": float(m.selling_price),
-            "expiry_date": str(m.expiry_date)
+            "expiry_date": str(m.expiry_date),
+            "barcode": m.barcode
         }
         for m in paginated["items"]
     ]

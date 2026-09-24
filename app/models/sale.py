@@ -22,6 +22,8 @@ class Sale(Base):
     # Status: COMPLETED, PARTIALLY_RETURNED, FULLY_RETURNED, CANCELLED
     status = Column(String, nullable=False, default="COMPLETED")
     
+    payment_method = Column(String, nullable=False, default="CASH")
+    
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 

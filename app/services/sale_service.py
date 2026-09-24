@@ -56,6 +56,7 @@ class SaleService:
             points_earned=0,
             points_redeemed=data.points_redeemed if data.points_redeemed else 0,
             status="COMPLETED",
+            payment_method=(data.payment_method or "CASH").upper(),
             created_at=datetime.now(),
             organization_id=org_id
         )

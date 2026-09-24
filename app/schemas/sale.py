@@ -17,6 +17,7 @@ class SaleCreate(BaseModel):
     sale_date: date | None = None
     discount_amount: float = 0
     points_redeemed: int = 0
+    payment_method: str | None = "CASH"
     items: List[SaleItemCreate]
 
 
@@ -42,6 +43,7 @@ class SaleResponse(BaseModel):
     points_redeemed: int
     total_amount: float
     status: str
+    payment_method: str
     created_at: datetime | None
     items: List[SaleItemResponse]
 

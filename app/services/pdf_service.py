@@ -106,7 +106,7 @@ class PDFService:
         elements.append(Spacer(1, 10))
 
         # 3. Title Box
-        title_p = Paragraph("<b>RETAIL PHARMACY TAX INVOICE</b>", center_style)
+        title_p = Paragraph("<b>RETAIL PHARMACY INVOICE</b>", center_style)
         title_table = Table([[title_p]], colWidths=[pdf.width])
         title_table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#eef4f9")),
@@ -126,7 +126,7 @@ class PDFService:
             [Paragraph("<b>Invoice No.</b>", base_normal), Paragraph(sale.invoice_number, base_normal),
              Paragraph("<b>Date</b>", base_normal), Paragraph(str(sale.sale_date), base_normal)],
             [Paragraph("<b>Patient / Customer</b>", base_normal), Paragraph(customer_name, base_normal),
-             Paragraph("<b>Payment</b>", base_normal), Paragraph("UPI", base_normal)]
+             Paragraph("<b>Payment</b>", base_normal), Paragraph(getattr(sale, 'payment_method', 'CASH').upper() if getattr(sale, 'payment_method', None) else 'CASH', base_normal)]
         ]
         
         details_table = Table(details_data, colWidths=[cw1, cw2, cw3, cw4])
@@ -149,9 +149,9 @@ class PDFService:
         items_data.append([
             Paragraph("<b>#</b>", header_base),
             Paragraph("<b>Medicine / Item Description</b>", header_base),
-            Paragraph("<b>HSN</b>", header_base),
             Paragraph("<b>Qty</b>", header_base),
             Paragraph("<b>Rate (Rs.)</b>", header_base),
+            Paragraph("<b>Disc. (Rs.)</b>", header_base),
             Paragraph("<b>Amount (Rs.)</b>", header_base),
         ])
 
@@ -162,24 +162,33 @@ class PDFService:
         ).all()
         medicine_dict = {m.id: m for m in medicines}
 
+        subtotal = sale.total_amount + sale.discount_amount
         for idx, item in enumerate(sale.items, 1):
             med = medicine_dict.get(item.medicine_id)
             name = med.name if med else f"Medicine ID: {item.medicine_id}"
-            hsn = "3004"
             qty = str(item.quantity)
             rate = f"{item.selling_price:.2f}"
-            amt = f"{item.quantity * item.selling_price:.2f}"
+            
+            item_gross = item.quantity * item.selling_price
+            if subtotal > 0:
+                item_disc = (item_gross / subtotal) * sale.discount_amount
+            else:
+                item_disc = 0
+            item_net = item_gross - item_disc
+            
+            disc_str = f"{item_disc:.2f}"
+            amt = f"{item_net:.2f}"
 
             items_data.append([
                 Paragraph(str(idx), center_style),
                 Paragraph(name, base_normal),
-                Paragraph(hsn, center_style),
                 Paragraph(qty, center_style),
                 Paragraph(rate, right_style),
+                Paragraph(disc_str, right_style),
                 Paragraph(amt, right_style),
             ])
 
-        items_table = Table(items_data, colWidths=[30, 230, 60, 45, 80, 90])
+        items_table = Table(items_data, colWidths=[30, 220, 40, 75, 80, 90])
         items_table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1b365d")),
             ('TEXTCOLOR', (0,0), (-1,0), colors.white),
