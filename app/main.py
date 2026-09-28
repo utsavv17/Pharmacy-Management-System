@@ -55,7 +55,8 @@ origins = [
     "http://localhost:5174",
     "https://develop.d393xravvewyoy.amplifyapp.com",
     "http://54.179.188.174",
-    "https://pharmacy-management-system-neon-psi.vercel.app"
+    "https://pharmacy-management-system-neon-psi.vercel.app",
+    "https://pharmacy-management-system-tiei.vercel.app"
 ]
 if "FRONTEND_URL" in os.environ:
     origins.append(os.environ["FRONTEND_URL"])
