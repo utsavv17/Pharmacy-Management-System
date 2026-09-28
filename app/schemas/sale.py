@@ -1,6 +1,21 @@
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import List
+from app.schemas.medicine import MedicineCreateSchema
+
+class POSPurchaseItemCreate(BaseModel):
+    supplier_id: int | None = None
+    supplier_name: str | None = None
+    purchase_date: date
+    batch_no: str
+    expiry_date: date
+    purchase_price: float
+    selling_price: float
+    quantity: int
+
+class POSMedicinePurchaseCreate(BaseModel):
+    medicine: MedicineCreateSchema
+    purchase: POSPurchaseItemCreate
 
 class SaleItemCreate(BaseModel):
     medicine_id: int

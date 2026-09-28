@@ -8,7 +8,7 @@ from app.models.batch import Batch
 class PurchaseService:
 
     @staticmethod
-    def create_purchase(db: Session, data, org_id: int):
+    def create_purchase(db: Session, data, org_id: int, commit: bool = True):
         try:
             # 1) Create parent purchase
             # create a unique invoice number
@@ -78,10 +78,14 @@ class PurchaseService:
             purchase.total_amount = total_amount
             
             # Commit the entire transaction atomically
-            db.commit()
-            db.refresh(purchase)
+            if commit:
+                db.commit()
+                db.refresh(purchase)
+            else:
+                db.flush()
 
             return purchase
         except Exception as e:
-            db.rollback()
+            if commit:
+                db.rollback()
             raise e

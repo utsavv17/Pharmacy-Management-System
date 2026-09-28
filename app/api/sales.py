@@ -8,7 +8,10 @@ from app.services.sale_service import SaleService
 from app.models.sale import Sale
 from app.models.medicine import Medicine
 from app.models.batch import Batch
-from app.schemas.sale import SaleCreate, SaleResponse
+from app.schemas.sale import SaleCreate, SaleResponse, POSMedicinePurchaseCreate
+from app.schemas.purchase import PurchaseCreate, PurchaseItemCreate
+from app.services.medicine_service import MedicineService
+from app.services.purchase_service import PurchaseService
 from app.utils.pagination import Paginator
 
 
@@ -138,6 +141,67 @@ def get_pos_medicines(
         }
     }
 
+
+@router.post("/pos/create-medicine-purchase")
+def create_pos_medicine_purchase(
+    payload: POSMedicinePurchaseCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+    org_id: int = Depends(get_current_organization)
+):
+    try:
+        # 1. Create Medicine (commit=False)
+        med, error = MedicineService.create(db, payload.medicine, org_id, commit=False)
+        if error:
+            db.rollback()
+            if error == "MEDICINE_EXISTS":
+                raise HTTPException(status_code=400, detail="Medicine name already exists")
+            raise HTTPException(status_code=400, detail=error)
+            
+        # 2. Create Purchase & Batch (commit=False)
+        purchase_data = PurchaseCreate(
+            supplier_id=payload.purchase.supplier_id,
+            supplier_name=payload.purchase.supplier_name,
+            purchase_date=payload.purchase.purchase_date,
+            items=[
+                PurchaseItemCreate(
+                    medicine_id=med.id,
+                    batch_no=payload.purchase.batch_no,
+                    expiry_date=payload.purchase.expiry_date,
+                    purchase_price=payload.purchase.purchase_price,
+                    selling_price=payload.purchase.selling_price,
+                    quantity=payload.purchase.quantity
+                )
+            ]
+        )
+        
+        purchase = PurchaseService.create_purchase(db, purchase_data, org_id, commit=False)
+        
+        db.commit()
+        db.refresh(med)
+        
+        # We need the batch details to return
+        batch = db.query(Batch).filter(Batch.medicine_id == med.id, Batch.batch_no == payload.purchase.batch_no).first()
+        
+        return {
+            "success": True,
+            "message": "Medicine and stock created successfully",
+            "data": {
+                "medicine_id": med.id,
+                "medicine_name": med.name,
+                "batch_id": batch.id if batch else 0,
+                "batch_number": payload.purchase.batch_no,
+                "stock": payload.purchase.quantity,
+                "selling_price": payload.purchase.selling_price,
+                "expiry_date": str(payload.purchase.expiry_date),
+                "barcode": med.barcode
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/create")
 def create_sale(

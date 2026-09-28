@@ -6,7 +6,7 @@ from app.models.medicine import Medicine
 class MedicineService:
 
     @staticmethod
-    def create(db: Session, data, org_id: int):
+    def create(db: Session, data, org_id: int, commit: bool = True):
         # Check duplicate medicine by name in the same org
         existing = db.query(Medicine).filter(Medicine.name == data.name, Medicine.organization_id == org_id).first()
         if existing:
@@ -14,8 +14,11 @@ class MedicineService:
 
         med = Medicine(**data.dict(), organization_id=org_id)
         db.add(med)
-        db.commit()
-        db.refresh(med)
+        if commit:
+            db.commit()
+            db.refresh(med)
+        else:
+            db.flush()
         return med, None
 
     @staticmethod

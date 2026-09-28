@@ -16,6 +16,7 @@ import {
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AddMedicinePurchaseModal } from '@/features/pos/AddMedicinePurchaseModal';
 
 interface POSMedicine {
   medicine_id: number;
@@ -51,6 +52,7 @@ export const PosPage = () => {
   const [newCustomerEmail, setNewCustomerEmail] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
   const [isClearBillModalOpen, setIsClearBillModalOpen] = useState(false);
+  const [isAddMedicineModalOpen, setIsAddMedicineModalOpen] = useState(false);
   
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit'>('cash');
@@ -402,7 +404,19 @@ export const PosPage = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="p-6 text-center text-slate-500">No medicines found matching "{searchTerm}"</div>
+                  <div className="p-6 text-center flex flex-col items-center justify-center space-y-4">
+                    <p className="text-slate-500">No medicine found for "{searchTerm}"</p>
+                    <Button 
+                      variant="outline"
+                      className="border-primary text-primary hover:bg-primary/5"
+                      onClick={() => {
+                        setIsAddMedicineModalOpen(true);
+                        searchInputRef.current?.blur();
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Add New Medicine
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -829,6 +843,23 @@ export const PosPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Medicine Purchase Modal */}
+      {isAddMedicineModalOpen && (
+        <AddMedicinePurchaseModal
+          isOpen={isAddMedicineModalOpen}
+          onClose={() => {
+            setIsAddMedicineModalOpen(false);
+            setTimeout(() => searchInputRef.current?.focus(), 100);
+          }}
+          initialMedicineName={searchTerm}
+          onSuccess={(newMedicine) => {
+            addToCart(newMedicine);
+            queryClient.invalidateQueries({ queryKey: ['posMedicines'] });
+            setIsAddMedicineModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };
