@@ -70,6 +70,7 @@ export const AddMedicinePurchaseModal: React.FC<AddMedicinePurchaseModalProps> =
     const medicine = {
       name: formData.get('name') as string,
       generic_name: formData.get('generic_name') as string,
+      brand: formData.get('brand') as string,
       category: formData.get('category') as string,
       unit: formData.get('unit') as string,
       strength: formData.get('strength') as string,
@@ -114,10 +115,14 @@ export const AddMedicinePurchaseModal: React.FC<AddMedicinePurchaseModalProps> =
           {/* Medicine Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-[#0B3B2C] border-b pb-2">Medicine Information</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Medicine Name *</Label>
                 <Input id="name" name="name" required defaultValue={initialMedicineName} className="rounded-lg bg-white border-slate-200" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="brand">Brand</Label>
+                <Input id="brand" name="brand" className="rounded-lg bg-white border-slate-200" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="generic_name">Generic Name</Label>

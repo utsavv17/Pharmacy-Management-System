@@ -33,6 +33,33 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    
+    // Globally format FastAPI errors into a single readable string
+    let errorMessage = '';
+    const data = error.response?.data;
+    
+    if (data) {
+      if (typeof data.detail === 'string') {
+        errorMessage = data.detail;
+      } else if (Array.isArray(data.detail)) {
+        errorMessage = data.detail.map((err: any) => {
+          const field = err.loc?.slice(-1)[0] || 'Field';
+          return `${field}: ${err.msg}`;
+        }).join(', ');
+      } else if (data.detail?.message) {
+        errorMessage = data.detail.message;
+      } else if (data.message) {
+        errorMessage = data.message;
+      }
+      
+      // Inject the clean string back into both properties 
+      // so any component reading .detail or .message gets the formatted text!
+      if (errorMessage) {
+        data.detail = errorMessage;
+        data.message = errorMessage;
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
